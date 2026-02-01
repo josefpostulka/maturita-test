@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testy - SPS & STT</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f8; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 800px; width: 100%; text-align: center; }
+        h1 { color: #2c3e50; margin-bottom: 20px; }
+        h2 { color: #34495e; font-size: 1.2rem; margin-top: 0; }
+        
+        /* Obrazky */
+        .question-img, .review-img { max-width: 100%; max-height: 300px; height: auto; border-radius: 8px; margin: 15px auto; border: 1px solid #ddd; display: none; }
+        
+        /* Moznosti */
+        .options { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+        .option-btn { padding: 14px; border: 2px solid #e9ecef; border-radius: 8px; background: #fff; cursor: pointer; text-align: left; font-size: 1rem; font-weight: 500; color: #333; transition: 0.2s; }
+        .correct { background-color: #d1e7dd !important; border-color: #198754 !important; color: #0f5132 !important; }
+        .wrong { background-color: #f8d7da !important; border-color: #dc3545 !important; color: #842029 !important; }
+        
+        /* Nedodelana otazka */
+        .unfinished-wrapper { background-color: #fff3cd; border: 2px dashed #ffc107; padding: 30px; border-radius: 12px; cursor: pointer; }
+        .unfinished-text { color: #856404; font-weight: bold; font-size: 1.3rem; margin: 0; }
+
+        /* Ovladaci lista */
+        .controls { margin-top: 30px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; padding-top: 20px; }
+        .left-group { display: flex; gap: 10px; }
+        
+        .primary-btn { padding: 12px 24px; background-color: #0d6efd; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 600; }
+        .secondary-btn { padding: 12px 18px; background-color: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+        .danger-btn { padding: 12px 18px; background-color: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+
+        /* Menu */
+        .menu-group { background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; text-align: left; border: 1px solid #eee; }
+        label { font-weight: bold; color: #495057; display: block; margin-bottom: 8px; }
+        select { padding: 12px; border-radius: 6px; border: 1px solid #ccc; width: 100%; font-size: 1rem; margin-bottom: 10px; }
+        
+        /* Vysledky */
+        .review-item { background: #fff8f8; border-left: 5px solid #dc3545; padding: 15px; margin-bottom: 20px; border-radius: 4px; text-align: left; }
+        .review-q { font-weight: bold; display: block; margin-bottom: 10px; color: #333; }
+        .review-bad { color: #dc3545; text-decoration: line-through; margin-right: 10px; }
+        .review-good { color: #198754; font-weight: bold; }
+        
+        .screen { display: none; }
+        .active { display: block; }
+        .score-display { font-size: 3.5rem; margin: 20px 0; font-weight: 800; }
+        .stats-bar { display: flex; justify-content: space-between; color: #6c757d; margin-bottom: 15px; font-weight: 600; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="start-screen" class="screen active">
+        <h1>Testy</h1>
+        <div class="menu-group">
+            <label for="subject-select">1. Vyber předmět:</label>
+            <select id="subject-select">
+                <option value="sps">SPS</option>
+                <option value="stt">STT</option>
+                <option value="both">SPS+STT</option>
+            </select>
+
+            <label for="q-count">2. Počet otázek:</label>
+            <select id="q-count">
+                <option value="10">10 otázek</option>
+                <option value="20">20 otázek</option>
+                <option value="50">50 otázek</option>
+                <option value="all">Všechny dostupné</option>
+            </select>
+        </div>
+        <button class="primary-btn" style="width:100%" onclick="startTest()">SPUSTIT TEST</button>
+        <div style="margin-top: 20px; font-size: 0.8rem; color: #adb5bd;">
+            Nahráno: SPS (<span id="count-sps">0</span>) | STT (<span id="count-stt">0</span>)
+        </div>
+    </div>
+
+    <div id="quiz-screen" class="screen">
+        <div class="stats-bar">
+            <span>Otázka <span id="current-q-num">1</span> / <span id="total-q-num">?</span></span>
+            <span id="score-live">Body: 0</span>
+        </div>
+        <img id="q-image" class="question-img" src="" alt="">
+        <h2 id="q-text">Načítání...</h2>
+        <div class="options" id="options-container"></div>
+        
+        <div class="controls">
+            <div class="left-group">
+                <button class="secondary-btn" onclick="location.reload()">Menu</button>
+                <button class="danger-btn" onclick="finishQuiz()">Dokončit</button>
+            </div>
+            <div class="right-group">
+                <button id="next-btn" class="primary-btn" style="display:none;" onclick="nextQuestion()">Další</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="result-screen" class="screen">
+        <h1>Výsledky testu</h1>
+        <div class="score-display" id="final-score">0%</div>
+        <p id="score-text" style="font-size: 1.2rem;">Správně 0 z 0</p>
+        <button class="primary-btn" onclick="location.reload()">Zkusit znovu</button>
+        <div id="wrong-answers-container" style="margin-top: 30px;"></div>
+    </div>
+</div>
+
+<script>
+    // ============================================================
+    // DATA OTÁZEK - VLOŽ VÝSTUPY Z GENERÁTORU
+    // ============================================================
+    
+    const questionsSPS = [
+    { text: "O jaký druh spojení se jedná, pokud jsou dvě součásti spolu spojené pomoci závrtného šroubu?", img: null, options: ["Spojení se silovým stykem", "Spojení se šroubovým stykem", "Spojení s materiálovým stykem", "Spojení s tvarovým stykem"], correctIndex: 0 },
+    { text: "O jaký druh spojeni se jedná, pokud jsou dvě součásti spolu spojené pomoci licovaného šroubu?", img: null, options: ["Spojení se silovým stykem", "Spojení s materiálovým stykem", "Spojení s tvarovým stykem", "Spojení s tvarovým stykem"], correctIndex: 3 },
+    { text: "Jaký závit mají nejběžněji šrouby (běžně k zakoupení v hobbymarketu)?", img: null, options: ["Dvouchodý levý", "Dvouchodý pravý", "Jednochody pravý", "Jednochody levý"], correctIndex: 2 },
+    { text: "Jaké označení má nejmenší průměr závitu šroubu?", img: null, options: ["d1", "d3", "d2", "d"], correctIndex: 1 },
+    { text: "Jaké označení má rozteč (stoupání) závitu?", img: null, options: ["D", "P", "S", "R"], correctIndex: 1 },
+    { text: "Jaký má vrcholový úhel profil závitu označeného Tr?", img: null, options: ["55", "30°", "60", "45"], correctIndex: 1 },
+    { text: "Jaký druh závitu je závit s označením Tr48x8?", img: null, options: ["Trubkový závit", "Lichoběžníkový rovnoramenný závit", "Lichoběžníkový nerovnoramenný závit", "Metrický závit"], correctIndex: 1 },
+    { text: "Šroubový spoj můžeme jistit proti uvolnění:", img: null, options: ["Korunovou maticí a závlačkou", "Přitužnou matici a podložkou", "Zalepenim a křídlovou matici", "Uzavřenou matici a talířovou podložkou"], correctIndex: 0 },
+    { text: "Pokud je realizováno pojištění šroubového spoje pomocí korunové matice, pak je nutné zároveň použit i další součást. Kterou?", img: null, options: ["Polyamidový kroužek", "Závlačku", "Pružnou podložku", "Podložku s jazýčkem"], correctIndex: 1 },
+    { text: "Pokud první číslo pevnostní třídy šroubu vynásobíme krát 100, pak vypočítáme u materiálu šroubu jeho mez:", img: null, options: ["pevnosti", "úměrnosti", "kluzu", "elasticity"], correctIndex: 0 },
+    { text: "Závit M20x2-6H. O jaký závit se jedná?", img: null, options: ["Pravý vnitřní metrický závit", "Pravý vnější metrický závit", "Levý vnější metrický závit", "Levý vnitřní metrický závit"], correctIndex: 0 },
+    { text: "Závit M30x3(1,5) LH-6g. O jaký závit se jedná?", img: null, options: ["Dvouchodý levý vnější metrický", "Dvouchodý pravý vnitřní metrický", "Trojchodý levý vnitřní metrický", "Trojchodý levý vnější metrický"], correctIndex: 0 },
+    { text: "Co musí být splněno, aby byl závit samosvorný?", img: null, options: ["Třecí úhel musí být větší než úhel profilu", "Úhel stoupání musí být větší než úhel profilu", "Třecí úhel musí být větší než úhel stoupání", "Úhel stoupání musí být větší než třecí úhel"], correctIndex: 2 },
+    { text: "Označení G½-14 znamená:", img: null, options: ["závit trubkový o velikosti 1/2 palce", "závit pancéřový o velikosti 1/2 palce", "závit trubkový kuželový", "závit trubkový válcový"], correctIndex: 3 },
+    { text: "Označeni Tr 48x6 znamená:", img: null, options: ["závit trubkový válcový 48mm", "závit trubkový kuželový 48mm", "závit lichoběžníkový 48mm", "závit lichoběžníkový 4/8 palce"], correctIndex: 2 },
+    { text: "Jaký šroub vidite na obrázku?", img: "So_01.jpg", options: ["Vratový", "Licovaný", "Závrtný", "Stavěcí"], correctIndex: 3 },
+    { text: "Jakou matici vidite na obrázku?", img: "So_02.jpg", options: ["Korunovou", "KM", "Křidlovou", "Samojistnou"], correctIndex: 0 },
+    { text: "Jakou podložku vidite na obrázku?", img: "So_03.jpg", options: ["Nord-Lock", "Ozubenou", "Vějířovou", "Pružnou"], correctIndex: 2 },
+    { text: "Jaký závit má šroub na obrázku?", img: "So_04.jpg", options: ["Jednochody levý závit", "Trojchodý levý závit", "Čtyřchodý pravý závit", "Dvouchodý pravý závit"], correctIndex: 0 },
+    { text: "Šroub na obrázku má velikost M10 x 45. Které písmenko lze nahradit číslem 45?", img: "So_05.jpg", options: ["C", "D", "A", "B"], correctIndex: 0 },
+    { text: "Který z těchto druhů spojů se považuje za nerozebíratelný?", img: null, options: ["Šroubový spoj", "Kolíkový spoj", "Nýtový spoj", "Čepový spoj"], correctIndex: 2 },
+    { text: "Která z těchto spojovacích součástí se kontroluje i na ohyb?", img: null, options: ["Šroub", "Kolik", "Nýt", "Čep"], correctIndex: 3 },
+    { text: "Ke kterému z uvedených účelů je nejméně vhodný kolíkový spoj?", img: null, options: ["K ustavení vzájemné přesné polohy", "K vytvoření kloubového spoje", "K přenosu síly kolmé k ose kolíku", "K přenosu krouticiho momentu"], correctIndex: 1 },
+    { text: "Který druh koliku je pojištěn vůči vypadnuti samosvornosti?", img: null, options: ["Kuželový kolík", "Pružný kolík", "Válcový kolík", "Rýhovaný kolik"], correctIndex: 0 },
+    { text: "Který druh koliku je pojištěn vůči vypadnutí správným uložením (H7/m6)?", img: null, options: ["Válcový kolík", "Pružný kolík", "Rýhovaný kolík", "Kuželový kolík"], correctIndex: 0 },
+    { text: "Čepy jsou v otvorech spojovaných součásti uloženy...", img: null, options: ["přechodně.", "libovolně.", "s vůli.", "s přesahem."], correctIndex: 2 },
+    { text: "Přímé nýtování za studena znamená, že se jedná o nýtováni…", img: null, options: ["bez použití nýtu při běžné teplotě.", "s použitím nýtu při běžné teplotě.", "s použitím nýtu pod bodem mrazu.", "bez použití nýtu pod bodem mrazu."], correctIndex: 0 },
+    { text: "Po nýtování za tepla vzniká nýtový spoj...", img: null, options: ["s tvarovým i silovým stykem.", "pouze s tvarovým stykem.", "pouze se silovým stykem.", "pouze s materiálovým stykem."], correctIndex: 0 },
+    { text: "Který parametr nepatří mezi výhody nýtových spojů?", img: null, options: ["Lze vytvářet spoje v hůře přístupných místech", "Vysoká pružnost spoje", "Lze spojovat různé materiály", "Těsnost spoje"], correctIndex: 3 },
+    { text: "Pro které druhy kolíků je nutné vyrobit přesnou (vystruženou) diru?", img: null, options: ["Pro válcové a kuželové koliky", "Pro kuželové a rýhované koliky", "Pro pružné a rýhované kolíky", "Pro pružné a válcové koliky"], correctIndex: 0 },
+    { text: "Co se nejpravděpodobněji nachází na obrázku?", img: "So_06.jpg", options: ["Čep", "Kolik", "Hybná hřídel", "Nýt"], correctIndex: 0 },
+    { text: "Jaký druh koliku se nachází na obrázku?", img: "So_07.jpg", options: ["Čep pro zajištění závlačkou", "Čep pro zajištění pojistným kroužkem", "Čep s otvory pro demontáž", "Kolik s otvory pro demontáž"], correctIndex: 0 },
+    { text: "Čim je nejvhodnější pojistit čep na obrázku?", img: "So_08.jpg", options: ["Stavěcím šroubem", "Přidržkou čepů", "Pojistným kroužkem", "Křidlovou matici"], correctIndex: 2 },
+    { text: "Jaký druh nýtu se nachází na obrázku?", img: "So_09.jpg", options: ["Dutý trhaci", "Dvoudílný uzavřený", "Plný s půlkulovou hlavou", "Rozklepávací sedlářský"], correctIndex: 0 },
+    { text: "Jakou součástí z uvedených nelze zajistit tento čep na obrázku?", img: "So_10.jpg", options: ["Vnitřním pojistným kroužkem", "Třmenovým kroužkem", "Stavěcím kroužkem", "Stavěcím šroubem"], correctIndex: 0 },
+    { text: "Který z těchto spojů se neřadi mezi spoje s tvarovým stykem?", img: null, options: ["Drážkový spoj", "Neokrouhlý spoj", "Klínový spoj", "Tlakový spoj"], correctIndex: 3 },
+    { text: "Který z těchto spojů se řadi mezi spoje rozebíratelné?", img: null, options: ["Pájený spoj", "Svarový spoj", "Tlakový spoj", "Svěrný spoj"], correctIndex: 3 },
+    { text: "Jaká spojovací součást se používá pro vznik svěrného spoje?", img: null, options: ["Čep", "Pero", "Kolík", "Šroub"], correctIndex: 3 },
+    { text: "Který druh pera se používá pro častý axiální posuv náboje po hřídeli?", img: null, options: ["Woodruffovo pero", "Těsné pero", "Výměnné pero", "Kotoučové pero"], correctIndex: 2 },
+    { text: "Které pero mezi ostatni logicky nepatří?", img: null, options: ["Woodruffovo pero", "Kotoučové pero", "Úsečové pero", "Výměnné pero"], correctIndex: 3 },
+    { text: "Na který z těchto druhů namáhání obvykle (pouze) kontrolujeme normalizovaná těsná pera?", img: null, options: ["Otlačení mezi hřídelí a perem", "Střih hřídele", "Střih pera", "Otlačení mezi nábojem a perem"], correctIndex: 3 },
+    { text: "Které z těchto spojení dokáže (při zachování podobných rozměrů) přenést největší kroutici moment?", img: null, options: ["Svěrný spoj s rozříznutým nábojem", "Spojení s jedním ploským klínem", "Spojení se dvěma těsnými pery", "Spojení s rovnobokým drážkováním"], correctIndex: 3 },
+    { text: "Který druh drážkování je nejvice podobný teoretickému použití spojení s několika těsnými pery?", img: null, options: ["Evolventní drážkování", "Jemné drážkování", "Woodruffovo drážkování", "Rovnoboké drážkování"], correctIndex: 3 },
+    { text: "Co je jednou ze základních výhod svěrných (a rozpěrných) spojů oproti ostatnim druhům spojení hřidele s nábojem?", img: null, options: ["Jsou výrobně nejjednodušší", "Dochází u nich částečně i k tvarovému styku", "Náboj Ize na hřídel namontovat v libovolné poloze", "Přenášení největších krouticích momentů"], correctIndex: 2 },
+    { text: "Tlakový spoj vytvořený lisováním za studena vznikne tak, že...", img: null, options: ["se hřídel zchladí a vloži se volně do díry v náboji.", "se hřídel silou (pomoci lisu) vtlačí do díry v náboji za běžné okolní teploty.", "se hřídel silou (pomoci lisu) vtlačí do díry v náboji za teploty pod bodem mrazu.", "se náboj zchladí a vloži se volně do díry v hřídeli."], correctIndex: 1 },
+    { text: "Jaká součást je na obrázku?", img: "So_11.jpg", options: ["Pero", "Klin", "Klin", "Čep"], correctIndex: 1 },
+    { text: "Jakou hlavu by měl mit šroub, který se vkládá do otvoru v součásti na obrázku?", img: "So_12.jpg", options: ["Válcovou", "Šestihrannou", "Čočkovitou", "Kuželovou"], correctIndex: 3 },
+    { text: "Pro jakou součást je vytvořena drážka v hřídeli na obrázku?", img: "So_13.jpg", options: ["Pro ploský klin", "Pro drážkový klín", "Pro Woodruffovo pero", "Pro těsné pero"], correctIndex: 2 },
+    { text: "Co je na obrázku?", img: "So_14.jpg", options: ["Tangenciální klin", "Pomůcka pro vytvoření tlakového spoje za studena", "Upínací pouzdro pro přenos kroutícího momentu silovým stykem", "Celek s evolventnim drážkováním pro přenos momentu tvarovým stykem"], correctIndex: 2 },
+    { text: "Součást na obrázku má uvnitř v otvoru vyrobeno:", img: "So_15.jpg", options: ["vnitřní ozubení.", "jemné drážkování.", "neokrouhlé spojeni.", "rovnoboké drážkování."], correctIndex: 3 },
+    { text: "Která z těchto hřideli nepřenáší kroutící moment?", img: null, options: ["Hybná hřídel", "Předlohová hřídel", "Kliková hřidel", "Nosná hřídel"], correctIndex: 3 },
+    { text: "V jakém provedeni se konstruují hybné hřídele?", img: null, options: ["Vždy otočně", "Otočně i nepohyblivě", "Nezáleží na konstrukci", "Vždy nepohyblivě"], correctIndex: 0 },
+    { text: "Na jaký druh namáhání primárně kontrolujeme nosné hřídele?", img: null, options: ["Střih (smyk)", "Krut", "Ohyb", "Vzpěr"], correctIndex: 2 },
+    { text: "Které tvrzení o hřídelových čepech NENÍ pravdivé?", img: null, options: ["Jsou to části hřídele, které jsou ve styku s ložiskem.", "Dělíme je na axiální, radiální a kombinované.", "Přenášejí všechny sily mezi hřídeli a rámem stroje nebo ložiskem.", "Jsou vždy kontrolovány na ohyb i krut."], correctIndex: 1 },
+    { text: "Na jaký druh namáhání kontrolujeme axiální hřídelové čepy?", img: null, options: ["Střih (smyk)", "Krut", "Ohyb", "Otlačeni"], correctIndex: 3 },
+    { text: "Který z těchto hřídelových čepů NEPOTŘEBUJE nutně dělený náboj?", img: null, options: ["Kulový", "Hřebenový", "Krční", "Kuželový"], correctIndex: 3 },
+    { text: "Co se rozumi pojmem \"kritické otáčky\" hřídele?", img: null, options: ["Jsou to maximální otáčky hřídele.", "Jsou to minimální otáčky hřídele.", "Jsou to otáčky, při kterých hřídel nemůže pracovat.", "Jsou to otáčky, při kterých dochází ke kmitání hřídele způsobené vlastní tihou."], correctIndex: 3 },
+    { text: "Na kterém parametru primárně závisí velikost \"kritických otáček\" hřídele?", img: null, options: ["Průhyb hřídele způsobený vlastní tihou.", "Počet konstrukčních vrubů na hřideli.", "Druh ložisek, ve kterých je hřidel uložena.", "Funkce hřídele - zda je nosná nebo hybná."], correctIndex: 0 },
+    { text: "Který vzorec byste použili pro výpočet redukovaného momentu na hybné hřídeli (kruhového průřezu)?", img: null, options: ["0", "0", "0", "0"], correctIndex: 4 },
+    { text: "Co způsobuje každý tzv. konstrukční vrub na hřídeli?", img: null, options: ["Zvýšenou koncentraci napětí", "Lepší drsnost povrchu", "Zvýšení ohybového momentu", "Snížení hmotnosti"], correctIndex: 0 },
+    { text: "Na obrázku je schéma převodovky. Jaký způsobem je namáhána výstupní hřídel v označeném místě?", img: "So_16.jpg", options: ["Na ohyb i krut", "Pouze na ohyb", "Pouze na krut", "Hřidel v tomto místě neni namáhána"], correctIndex: 0 },
+    { text: "Jaký druh hřídele je na obrázku?", img: "So_17.jpg", options: ["Vačková", "Na obrázku není hřídel", "Kliková", "Nosná"], correctIndex: 0 },
+    { text: "Na jakém typu hřídele může být uložená volná kladka:", img: null, options: ["Na nosné", "Na hybné", "Na dute", "Na ohebné"], correctIndex: 0 },
+    { text: "Na obrázku se nachází Kardanová hřídel. O jaký druh hřídele se tedy jedná?", img: "So_19.jpg", options: ["Klikovou", "Hybnou", "Vyvažovací", "Nosnou"], correctIndex: 1 },
+    { text: "Proč se v převodovkách často používají duté hřídele misto klasických plných hřideli?", img: null, options: ["mohou mít menší průměr", "odolávají lépe únavě materiálu", "jsou lehčí při stejně únosnosti", "jejich výroba je levnější"], correctIndex: 2 },
+    { text: "Jak se nazývá druh svaru, u kterého svařované součásti leží (plochou) na sobě svar je mezi těmito plochami?", img: null, options: ["Tupý svar", "Koutový svar", "Přeplátovaný svar", "Lemový svar"], correctIndex: 2 },
+    { text: "Do které kategorie svarů lze zařadit svar tvaru \"U\"?", img: null, options: ["Tupė svary", "Lemové svary", "Koutové svary", "Přeplátované svary"], correctIndex: 0 },
+    { text: "Který z uvedených materiálů je nejhůře svařitelný (resp. obvykle nesvařitelný)?", img: null, options: ["Oceli", "Plasty", "Litiny", "Neželezné kovy"], correctIndex: 2 },
+    { text: "Co nepatří mezi výhody svařování?", img: null, options: ["Malá hlučnost v průběhu práce", "Poddajnost vytvořeného spoje bez pnuti", "Těsnost vytvořeného spoje", "Vysoká produktivita vytváření spojů"], correctIndex: 1 },
+    { text: "Pro který z uvedených svarú obvykle není potřeba přídavný materiál?", img: null, options: ["Děrový svar", "Lemový svar", "Svar tvaru V", "Rohový svar"], correctIndex: 1 },
+    { text: "Čemu se nejvíce podobá značka pro označení montážního svaru?", img: null, options: ["Praporku", "Pravoúhlému trojúhelníku", "Písmenu Z", "Kružnici"], correctIndex: 0 },
+    { text: "Jaký druh tepelného zpracování se provádí u svařenců za účelem sníženi vnitřního pnuti?", img: null, options: ["Žíhání", "Kaleni", "Zušlechťování", "Popouštění"], correctIndex: 0 },
+    { text: "Kterou z uvedených zásad NENÍ vhodné dodržet při konstruování velkého složitého svařence se žebry?", img: null, options: ["Přesné rozměry svařence obrábět až po svaření", "Na výkrese předepisovat raději větší a delší svary bez přerušení", "Na výkrese předepsat vhodné tepelné zpracování", "U žeber nepoužívat ostré hrany"], correctIndex: 1 },
+    { text: "Na jaký druh namáhání kontrolujeme vždy přeplátované spoje?", img: null, options: ["Ohyb", "Krut", "Střih", "Tah"], correctIndex: 2 },
+    { text: "Čím vzniká pájený spoj?", img: null, options: ["Natavenim stykových ploch", "Difuzi", "Adhezi", "Kohezi"], correctIndex: 1 },
+    { text: "Co je to \"pájka\"?", img: null, options: ["Přídavný materiál pro vznik pájeného spoje", "Kyselina pro chemické očištění", "Nástroj pro připravu stykových ploch", "Přístroj pro taveni přídavného materiálu"], correctIndex: 0 },
+    { text: "Přídavné materiály pro pájení rozlišujeme na měkké a tvrdé. Který z uvedených materiálů by se dal zařadit do měkkých?", img: null, options: ["Stříbro", "Zinek", "Méd", "Cin"], correctIndex: 3 },
+    { text: "Co nepatří mezi výhody pájených spojů?", img: null, options: ["Nedochází k tepelnému ovlivnění oblasti kolem spoje", "Možnost spojování i hůře tavitelných materiálů", "Vysoká pevnost spoje", "Jednoduchost zařízeni"], correctIndex: 2 },
+    { text: "Co nepatří mezi výhody lepených spojů?", img: null, options: ["Nízká hmotnost přídavného materiálu", "Lze spojovat i jinými způsoby nespojitelné materiály", "Lepidla maji izolační vlastnosti", "Stálost spoje i za vyšších teplot"], correctIndex: 3 },
+    { text: "Na co si nemusíte dát pozor při konstruování (navrhování) lepeného spoje?", img: null, options: ["Na maximální možnou velikost stykové plochy", "Na volbu vhodného lepidla", "Na nizkou hmotnost lepidla", "Na skutečnost, aby byl spoj namáhaný pouze na střih"], correctIndex: 2 },
+    { text: "Jaký druh svaru je na obrázku?", img: "So_21.jpg", options: ["Lemový", "Tupý", "Koutový", "Přeplátovaný"], correctIndex: 3 },
+    { text: "Na výkrese se u svaru nachází následující značka. O jaký svar se nejedná?", img: "So_22.jpg", options: ["Kontinuálni (nepřerušovaný)", "Montážní", "Vypoukly", "Koutový"], correctIndex: 3 },
+    { text: "Na výkrese se u svaru nachází následující značka. O jaký svar se jedná?", img: "So_23.jpg", options: ["Přeplátovaný", "Přerušovaný", "Obvodový", "Svar délky 111 mm."], correctIndex: 1 },
+    { text: "Dvě zobrazené součásti jsou spojeny bodovým svarem. Jakým způsobem je svar namáhán?", img: "So_24.jpg", options: ["Tahem", "Ohybem", "Střihem (smykem)", "Tlakem"], correctIndex: 0 },
+    { text: "Jaký je nejvhodnější postup při výrobě vyobrazeného celku (deska a váleček)?", img: "So_25.jpg", options: ["4-3-2-1", "4-3-1-2", "4-1-2-3", "4-2-3-1"], correctIndex: 4 },
+    { text: "Jak se nazývá součást potrubí, která slouží k vyrovnání změny délek potrubi v důsledku změny teploty?", img: null, options: ["Timen", "Armatura", "Kompenzátor", "Fitinka"], correctIndex: 2 },
+    { text: "Která z uvedených součástí potrubí se neřadi mezi armatury?", img: null, options: ["Součást sloužící ke změně směru proudění", "Součást sloužící k regulaci průtoku v potrubí", "Součást sloužící k odvzdušněné potrubí", "Součást sloužící k měřeni tlaku v potrubi"], correctIndex: 3 },
+    { text: "Co znamená, když je na trubce napsáno \"PN10\"?", img: null, options: ["Pracovní přetlak je 1 MPa.", "Pracovní přetlak je 10 MPa.", "Pracovní tlak je 1 MPa.", "Pracovní tlak je 10 MPa."], correctIndex: 0 },
+    { text: "Co znamená, když je na trubce napsáno \"DN400\"?", img: null, options: ["Vnější průměr potrubí je cca 40 mm.", "Vnitřní průměr potrubí je cca 140 mm.", "Vnitřní průměr potrubí je cca 400 mm.", "Vnější průměr potrubí je cca 400 mm."], correctIndex: 2 },
+    { text: "Co nepatří mezi výhody plastových potrubí?", img: null, options: ["Jednoduché spojování", "Hladkost stěn", "Vysoká pevnost", "Nízká hmotnost"], correctIndex: 2 },
+    { text: "Ke kterému druhu spojení trubek jsou potřeba šrouby a matice jako spojovací materiály?", img: null, options: ["Závitové spojení", "Přírubové spojeni", "Pájené spojení", "Hrdlové spojení"], correctIndex: 1 },
+    { text: "Který druh spojení trubek Ize nejlépe utěsnit pomoci Iněných vlasců nebo teflonových pásek?", img: null, options: ["Hrdlové spojeni", "Přírubové spojení", "Závitové spojení", "Pájené spojení"], correctIndex: 2 },
+    { text: "Jak se nazývá prvek potrubi, který zajišťuje, aby dopravovaná látku proudila pouze v jednom směru?", img: null, options: ["Trojcestný kohout", "Pojistný ventil", "Regulační šoupátko.", "Zpětná klapka"], correctIndex: 3 },
+    { text: "Jak se nazývá prvek potrubí, kterým nelze regulovat velikost průtoku dopravované látky?", img: null, options: ["Škrtici klapka", "Regulační šoupátko", "Pojistný ventil", "Přímý jednocestný kohout"], correctIndex: 2 },
+    { text: "Co udává tzv. pracovní stupeň potrubi?", img: null, options: ["Maximální teplotu média v závislosti na světlosti", "Maximální přetlak v závislosti na teplotě", "Maximální teplotu v závislosti na tlaku", "Maximální přetlak v závislosti na světlosti"], correctIndex: 1 },
+    { text: "Jaká je základní jednotka veličiny \"objemový průtok\"?", img: null, options: ["kg/s", "m3/s", "m3/h", "l/min"], correctIndex: 1 },
+    { text: "Jaká součást je na obrázku?", img: "So_97.jpg", options: ["Pojistné šoupátko", "Teplotní kompenzátor", "Škrticí klapka", "Třicestný ventil"], correctIndex: 2 },
+    { text: "O jaké spojeni trubek se jedná, pokud se několik takových trubek na obrázku spojí za sebe?", img: "So_98.jpg", options: ["Přírubové spojení", "Hrdlové spojení", "Závitové spojeni", "Gumové spojení"], correctIndex: 1 },
+    { text: "Jak se souhrnně nazývají součásti na obrázcích?", img: "So_99.jpg", options: ["Armatury", "Třmeny", "Příruby", "Fitinky"], correctIndex: 3 },
+    { text: "K čemu nelze použít součást na obrázku?", img: "So_100.jpg", options: ["Ke kompenzaci teplotních dilatací potrubi", "K vyrovnání montážních nepřesnosti", "K regulaci tlaku v potrubi", "Ke sniženi přenosu hluku a vibrací po potrubi"], correctIndex: 2 },
+    { text: "Ozubené převody jsou...", img: null, options: ["nepřímé převody s tvarovým stykem.", "nepřímé převody se silovým stykem.", "přímě převody s tvarovým stykem.", "přímé převody se silovým stykem."], correctIndex: 2 },
+    { text: "Co NEPATŘÍ mezi výhody ozubených převodů?", img: null, options: ["Stálý převodový poměr", "Přenos velkých výkonů", "Tlumí rázy", "Velmi dlouhá životnost"], correctIndex: 2 },
+    { text: "Osy ozubených kol kuželového soukolí jsou navzájem...", img: null, options: ["rovnoběžné.", "různoběžné.", "kolineárni.", "mimoběžně."], correctIndex: 1 },
+    { text: "Které tvrzení NENİ pravdivé o \"základním profilu\" evolventního ozubeni?", img: null, options: ["Má rovné boky zubů.", "Průměr roztečné kružnice se rovná nekonečnu", "Jeho tvar se používá při výrobě nástrojů.", "Výška hlavy zubu neni rovna modulu ozubeni (při úhlu 20°)."], correctIndex: 3 },
+    { text: "Při kterém z těchto případů dojde k podřezání paty zubu čelního ozubeného kola s přímými zuby s úhlem záběru 20°?", img: null, options: ["Při provozu kola s 15 zuby.", "Při provozu kola s 18 zuby.", "Při výrobě kola s 15 zuby.", "Při výrobě kola s 18 zuby."], correctIndex: 2 },
+    { text: "Která z těchto sil je u čelního ozubeného kola s přímými zuby při záběru nulová?", img: null, options: ["Axiální sila", "Tangenciální síla", "Radiální síla", "Normálová sila"], correctIndex: 0 },
+    { text: "Jak NEJSOU namáhány zuby ozubených kol?", img: null, options: ["Na otlačeni", "Na krut", "Oterem", "Na ohyb"], correctIndex: 1 },
+    { text: "Který parametr neni důležitý při kontrole zubu ozubeného kola na ohyb?", img: null, options: ["Přenášený moment", "Drsnost boku zubu", "Modul ozubeni", "Materiál ozubeného kola"], correctIndex: 1 },
+    { text: "Co NEPATŘÍ mezi výhody čelnich ozubených kol se šikmými zuby (v porovnání s přímými zuby)?", img: null, options: ["Přenos větších výkonů", "Menší rozměry (moduly)", "Tichý chod", "Menší namáhání ložisek"], correctIndex: 3 },
+    { text: "Jaká je hlavni výhoda šnekových soukolí?", img: null, options: ["Velká účinnost", "Malé namáhání ložisek", "Přenos obrovských výkonů", "Velké převodové poměry"], correctIndex: 3 },
+    { text: "Čím vzniklo typické poškození ozubeného kola na obrázku?", img: "So_107.jpg", options: ["Lomovým porušenim", "Abrazi", "Pittingem", "Gallingem"], correctIndex: 4 },
+    { text: "jaký druh ozubeného soukolí na obrázku se jedná?", img: "So_108.jpg", options: ["Paloidni", "Hypoidní", "Čelní", "Šnekovė"], correctIndex: 4 },
+    { text: "Jaký typ ozubeného kola je na obrázku?", img: "So_109.jpg", options: ["Kuželové ozubené kolo", "Čelní ozubené kolo s šikmými zuby", "Čelni ozubené kolo s přímými zuby", "Šnekové ozubené kolo"], correctIndex: 4 },
+    { text: "Který ze zakótovaných průměrů ozubeného kola Ize nazvat jako patní?", img: "So_110.jpg", options: ["D", "A", "B", "C"], correctIndex: 4 },
+    { text: "Průměr roztečné kružnice čelního ozubeného kola se vypočítá:", img: null, options: ["modul krát počet zubů", "Modul krát šířka zubové mezery", "průměr hlavové kružnice minus výška zubu", "pí krát modul krát počet zubů"], correctIndex: 0 },
+    { text: "Jaký druh tření vzniká v kluzných ložiscích?", img: null, options: ["Vláknové třeni", "Smykové tření", "Nevzniká v něm tření", "Valivé třeni"], correctIndex: 1 },
+    { text: "Který druh tření v kluzných ložiscích má nejnižší součinitel smykového třeni?", img: null, options: ["Suché", "Polosuché", "Kapalinné", "Vlhké"], correctIndex: 2 },
+    { text: "Které kluzné ložisko se NESKLÁDÁ z více částí?", img: null, options: ["Ložisková pánev", "Segmentové ložisko", "Pouzdro, pánev i segmentové ložisko se skládají z více částí", "Ložiskové pouzdro"], correctIndex: 3 },
+    { text: "K čemu slouží u valivých ložisek klec?", img: null, options: ["Uložení ložiska na hřídeli", "Zabránění vniku nečistot do ložiska", "Držení valivých elementů", "Uložení ložiska v náboji"], correctIndex: 2 },
+    { text: "Které ložisko se NEPOVAŽUJE za ložisko s \"čarovým\" stykem?", img: null, options: ["Kuželíkové ložisko", "Jehlové ložisko", "Kuličkové ložisko", "Válečkové ložisko"], correctIndex: 2 },
+    { text: "Které z těchto ložisek NEDOKÁŽE zachytit axiálni i radiální silu dohromady?", img: null, options: ["Kuželíkové ložisko", "Kuličkové ložisko s kosoühlým stykem", "Soudečkové ložisko", "Jehlové ložisko"], correctIndex: 3 },
+    { text: "Které z těchto ložisek je nejméně vhodné pro snášení velkých rázů?", img: null, options: ["Jehlové ložisko", "Kuličkové ložisko", "Kuželíkové ložisko", "Válečkové ložisko"], correctIndex: 1 },
+    { text: "Který parametr NEHRAJE zásadní roli při výběru typu valivého ložiska?", img: null, options: ["Požadovaná trvanlivost ložiska", "Poměr axiální a radiální síly působíci na ložisko", "Způsob mazání valivého ložiska", "Otáčky hřídele, na nichž jsou ložiska"], correctIndex: 2 },
+    { text: "Co je výhodou kluzných ložisek?", img: null, options: ["Teoreticky nepotřebuji mazání", "Dochází k minimálním ztrátám třenim", "Jejich výroba nemusí být přesná", "Maji velmi jednoduchou konstrukci"], correctIndex: 0 },
+    { text: "K čemu slouží (šipkou) označená část na zobrazené ložiskové jednotce?", img: "So_125.jpg", options: ["Pro pojištění vnějšího kroužku ložiska", "K uchycení ložiska ke hřídeli", "K mazání ložiska", "Pro zvýšení dynamické únosnosti ložiska"], correctIndex: 4 },
+    { text: "Pro jaké síly je vhodné ložisko na obrázku?", img: "So_126.jpg", options: ["Velké radiální a malé axiální", "Malé radiální a velké axiální", "Velké radiální a žádné axiální", "Žádné radiální a velké axiální"], correctIndex: 4 },
+    { text: "Která část a proč chybí válečkovému ložisku na obrázku?", img: "So_127.jpg", options: ["Chybí klec, aby se válečky mohly přizpůsobit hřídeli", "Chybí vnější kroužek, protože je ložisko nekompletni", "Chybí valivé elementy", "Chybí vnitřní kroužek (oddělávací)"], correctIndex: 4 },
+    { text: "Jaký typ valivého ložiska je na obrázku?", img: "So_128.jpg", options: ["Jehlové", "Kuličkové", "Soudečkové", "Válečkové"], correctIndex: 4 },
+    { text: "Které tvrzení o ložisku na obrázku NENİ pravdivé?", img: "So_129.jpg", options: ["Dovoluje natočit vnitřni kroužek vůči vnějšímu", "Zvládne přenášet velké axiální zatíženi", "Jedná se o kluzné ložisko", "Dochází v něm ke smykovému třeni"], correctIndex: 4 },
+    { text: "Hydrostatické mazání je založeno na využiti:", img: null, options: ["samomazných materiálů", "vtlačování maziva do klínové mezery vlivem rotace", "Tlaku maziva pomoci čerpadla", "vtlačování maziva vlivem ohřevu"], correctIndex: 2 },
+    { text: "U valivých ložisek se jako valivé elementy používají:", img: null, options: ["kuličky válečky, jehlany a soudečky", "kuličky, válečky, kuželiky a hranoly", "kuličky, válečky, soudečky a kuželíky", "jehly, soudečky, kuličky a kosoúhelníky"], correctIndex: 2 },
+    { text: "Jak NELZE vypočítat převodový poměr u řetězového převodu?", img: null, options: ["Jako poměr otáček obou řetězových kol", "Jako poměr výkonů na obou řetězových kolech", "Jako poměr počtu zubů obou řetězových kol", "Jako poměr roztečných průměrů obou řetězových kol"], correctIndex: 1 },
+    { text: "Kuželový třecí převod je převod...", img: null, options: ["s tvarovým stykem.", "s materiálovým stykem.", "se silovým stykem.", "se silovým i tvarovým stykem dohromady."], correctIndex: 2 },
+    { text: "Kterou z možností NELZE zajistit snížení prokluzu u třecích převodů?", img: null, options: ["Zvýšení přítlačné síly mezi oběma třecími koly", "Připevněním obloženi ke třecím kolúm", "Změnou materiálů třecích kol", "Zvýšením otáček třecích kol"], correctIndex: 3 },
+    { text: "Přes jaké plochy se přenáší síly mezi řemenicemi a úzkým klinovým řemenem?", img: null, options: ["boky řemene.", "zuby řemene.", "výztužná vlákna řemene.", "nárazník řemene."], correctIndex: 0 },
+    { text: "Co je výhodou třecích převodů?", img: null, options: ["Tlumí rázy", "Stálý převodový poměr", "Přenos velkých výkonů", "Malé namáhání ložisek"], correctIndex: 0 },
+    { text: "Řetězové převody jsou převody...", img: null, options: ["přímě se silovým stykem.", "nepřímé s tvarovým stykem.", "přímé s tvarovým stykem.", "nepřímě se silovým stykem."], correctIndex: 1 },
+    { text: "Jaký je poměr obvodových rychlosti obou řemenic v řemenovém převodu při zanedbání prokluzu?", img: null, options: ["Závislost nelze jednoznačně rozhodnout.", "Hnaci řemenice má větší rychlost.", "Hnaci řemenice ma stejnou rychlost jako hnaná.", "Hnaci řemenice má menší rychlost."], correctIndex: 2 },
+    { text: "Kam se umisťuje napinací kladka v řemenovém převodu?", img: null, options: ["Do ochablé části pásu a co nejblíže malé řemenice", "Do ochablé části pásu a co nejblíže velké řemenice", "Do napnuté části pásu a co nejblíže malé řemenice", "Do napnuté části pásu a co nejblíže velké řemenice"], correctIndex: 0 },
+    { text: "Co NEPATŘÍ mezi výhody řemenových převodů s ozubenými řemeny?", img: null, options: ["Maji tichý a klidný chod", "Namáhají méně ložiska", "Pracují bez skluzu", "Dobře snáší vysoké teploty"], correctIndex: 3 },
+    { text: "Co patří mezi výhody řemenových převodů s klínovými řemeny oproti třecím převodům?", img: null, options: ["Stálý převodový poměr", "Není nutné řešit napínání", "Velká vzdálenost os", "Malé zatížení ložisek"], correctIndex: 2 },
+    { text: "Jaký druh \"opásání\" se používá téměř výhradně u řetězových převodů?", img: null, options: ["Polozkřížené", "Otevřené", "Uzavřené", "Zkřížené"], correctIndex: 1 },
+    { text: "Co NEPATŘÍ mezi výhody řetězových převodů?", img: null, options: ["Stálý převodový poměr", "Menší namáhání ložisek", "Vysoká účinnost", "Nevyžaduje mazání"], correctIndex: 3 },
+    { text: "Který z uvedených řetězů má nejmenší tření mezi ním a řetězovým kolem při běhu?", img: null, options: ["Pouzdrový řetěz", "Ewartův řetěz", "Válečkový řetěz", "Gallúv řetěz"], correctIndex: 2 },
+    { text: "Jak se jmenuje řetěz, který je snadno rozebíratelný vzájemným pootočenim článků o 90° a vysunutím?", img: null, options: ["Článkový řetěz", "Ewartův řetěz", "Gallův řetěz", "Pouzdrový řetěz"], correctIndex: 1 },
+    { text: "Jak se jmenuje řetěz na obrázku?", img: "So_146.jpg", options: ["Ewartův řetěz", "Fleyerův řetěz", "Energetický řetěz", "Gallův řetěz"], correctIndex: 4 },
+    { text: "Pro jaký řemen je vhodná řemenice na obrázku?", img: "So_147.jpg", options: ["Pro žádný nejedná se o femenici", "Pro plochý řemen", "Pro klinový řemen", "Pro ozubený řemen"], correctIndex: 4 },
+    { text: "Jaká je hlavní funkce všech spojek?", img: null, options: ["Zajištění plynulého rozběhu", "Přenos kroutícího momentu", "Tlumení kmitů a rázů", "Ochrana proti přetížení"], correctIndex: 1 },
+    { text: "Jaká je základní vlastnost pevných (mechanických neovládaných) spojek?", img: null, options: ["Zajišťují plynulý rozběh", "Jsou jednoduché a levné.", "Tlumí kmity a rázy", "Umi kompenzovat výrobní nepřesnosti"], correctIndex: 1 },
+    { text: "Jaká je základní vlastnost vyrovnávacích (mechanických neovládaných) spojek?", img: null, options: ["Jsou jednoduché a levné", "Umi kompenzovat výrobní nepřesnosti", "Zajišťují plynulý rozběh", "Tlumi kmity a rázy"], correctIndex: 1 },
+    { text: "Která z těchto výsuvných ovládaných spojek NEPŘENÁŠÍ kroutíci moment pomoci silového styku?", img: null, options: ["Kuželová třecí spojka", "Zubová výsuvná spojka", "Čelní třecí spojka", "Lamelová třecí spojka"], correctIndex: 1 },
+    { text: "Která z těchto spojek se NEŘADÍ mezi ovládané spojky?", img: null, options: ["Volnoběžná spojka", "Přírubová spojka", "Rozběhová spojka", "Kuličková vysmekávaci spojka"], correctIndex: 1 },
+    { text: "Jakým způsobem (stykem) přenáší kroutící moment nejjednodušší trubková spojka?", img: null, options: ["Trubková spojka neexistuje", "Silovým stykem", "Materiálovým stykem", "Tvarovým stykem"], correctIndex: 1 },
+    { text: "Jak se nazývají spojky, které dokážou přenášet kroutící moment pouze v jednom směru otáčení?", img: null, options: ["Rozběhové spojky", "Třecí spojky", "Zubové spojky", "Volnoběžné spojky"], correctIndex: 3 },
+    { text: "Která spojka se používá pro vytvoření tzv. Kardanova závěsu, používaného typicky pro pohon vozidel?", img: null, options: ["Třecí spojka", "Korýtková spojka", "Obručová spojka", "Kloubová spojka"], correctIndex: 3 },
+    { text: "Pro bezpečné zastavení pohybu tělesa musi platit:", img: null, options: ["Brzdný moment je stejný jako kroutici moment", "Brzdný moment musí být větší jak kroutící moment", "Brzdný moment nesmí být větší jak kroutíci moment", "Kroutici moment musi být větší než brzdný moment"], correctIndex: 1 },
+    { text: "Kde se nejčastěji používají špalkové brzdy s vnějšími čelistmi?", img: null, options: ["u železničních vozidel", "u elektromotorů", "u automobilů", "v letectví"], correctIndex: 0 },
+    { text: "Kde se nejčastěji používají čelisťové brzdy s vnitřními čelistmi?", img: null, options: ["u železničních vozidel", "u automobilů", "u jeřábů", "u výtahů"], correctIndex: 1 },
+    { text: "Která ze základních typů brzd Ize zařadit mezi axiálni brzdy?", img: null, options: ["Bubnová brzda", "Pásová brzda", "Kotoučová brzda", "Jednočelisťová brzda"], correctIndex: 2 },
+    { text: "Která z těchto informaci obecně o brzdách NENİ pravdivá?", img: null, options: ["Mechanické brzdy se děli na radiální a axiální", "Mění se (při jejich činnosti) potenciální energie na tepelnou", "Brzdného účinku je dosaženo silovým stykem", "Slouží k zajištění klidové polohy"], correctIndex: 1 },
+    { text: "K čemu slouží vnitřní kanály brzdného kotouče?", img: "So_161.jpg", options: ["K vyztuženi", "K odlehčení hmotnosti", "Ke chlazeni", "K regulaci přítlačné síly"], correctIndex: 2 },
+    { text: "Jak se jmenuje brzda na obrázku?", img: "So_162.jpg", options: ["Lamelová", "Elektrická", "Hydraulická", "Třmenová"], correctIndex: 0 },
+    { text: "O jakou brzdu se jedná?", img: "So_163.jpg", options: ["Kotoučová", "Bubnová", "Pásová", "Špalková"], correctIndex: 2 },
+    { text: "Hydrostatické mechanismy se řadí mezi mechanismy...", img: null, options: ["pneumatické.", "ozubené.", "tekutinové.", "kinematické."], correctIndex: 2 },
+    { text: "Co NEPATŘÍ mezi výhody hydrostatických mechanismů?", img: null, options: ["Snadná regulace", "Velká životnost", "Vysoká účinnost", "Přenos energie na velké vzdálenosti"], correctIndex: 3 },
+    { text: "Který prvek NENÍ součástí hydrostatického mechanismu?", img: null, options: ["Nádrž", "Vzdušník", "Hydromotor", "Hydrogenerátor"], correctIndex: 1 },
+    { text: "Který druh energie má zcela zanedbatelnou hodnotu při přenosu sil v hydrostatickém mechanismu?", img: null, options: ["Tlaková", "Potenciálni", "Kinetická", "Všechny jsou důležité"], correctIndex: 2 },
+    { text: "Jaký účel má v hydrostatickém mechanismu hydrogenerátor?", img: null, options: ["Mění energii tlakovou na potenciální", "Mění energii mechanickou na tlakovou", "Mění energii mechanickou na potenciální", "Mění energii tlakovou na mechanickou"], correctIndex: 1 },
+    { text: "Ve kterém z těchto hydrogenerátorů lze nalézt klikový mechanismus?", img: null, options: ["Radový pístový hydrogenerátor", "Šroubový hydrogenerátor", "Zubový hydrogenerátor", "Lamelový hydrogenerátor"], correctIndex: 0 },
+    { text: "Které z těchto druhů hydrogenerátorů lze regulovat změnou excentricity rotoru vůči statoru?", img: null, options: ["Lamelový hydrogenerátor", "Radový pístový hydrogenerátor", "Šroubový hydrogenerátor", "Axiální pístový hydrogenerátor"], correctIndex: 0 },
+    { text: "Které z těchto druhú hydrogenerátorú Ize regulovat naklopením desky ovládající pohyb pístů?", img: null, options: ["Radiální pístový hydrogenerátor", "Lamelový hydrogenerátor", "Axiální pístový hydrogenerátor", "Radový pístový hydrogenerátor"], correctIndex: 2 },
+    { text: "Jaký základní tvar má značka pro hydrogenerátor v normalizovaných hydraulických schématech?", img: null, options: ["Čtverec", "Obdélník", "Šestiúhelník", "Kružnice"], correctIndex: 3 },
+    { text: "V normalizovaných hydraulických schématech se elektrický motor znači pismenkem M, kolem něhož je:", img: null, options: ["čtverec.", "trojúhelník.", "obdélník.", "kružnice."], correctIndex: 3 },
+    { text: "Která z možností nevyjadřuje funkci nádrže v hydrostatických mechanismech?", img: null, options: ["Zachycení nečistot v pracovní kapalinë", "Chlazení pracovní kapaliny", "Zásobování (uchování) pracovní kapaliny", "Akumulace tlakové energie pracovní kapaliny"], correctIndex: 3 },
+    { text: "K čemu slouží v hydrostatickém mechanismu pojistný ventil?", img: null, options: ["K řízení velikosti tlaku v obvodu", "K řízení velikosti průtoku pracovní kapaliny v obvodu", "K akumulaci energie", "K řízení směru toku pracovní kapaliny v obvodu"], correctIndex: 0 },
+    { text: "K čemu slouží v hydrostatickém mechanismu škrtící ventil?", img: null, options: ["K řízení velikosti průtoku pracovní kapaliny v obvodu", "K řízení velikosti tlaku v obvodu", "K akumulaci energie", "K řízení směru toku pracovní kapaliny v obvodu"], correctIndex: 0 },
+    { text: "Celek na obrázku lze nejlépe použít jako...", img: "So_177.jpg", options: ["jednočinný hydrogenerátor.", "dvojčinný hydrogenerátor.", "jednočinný hydromotor.", "dvojčinný hydromotor."], correctIndex: 4 },
+    { text: "K čemu slouží v hydraulických systémech hydraulický zámek?", img: null, options: ["K filtrování hydraulické kapaliny", "K regulaci rychlosti pohybu pístu", "K ochraně systému před přetlakem", "K trvalému uzavření průtoku v jedné větvi obvodu a zajištění polohy pístu"], correctIndex: 3 },
+    { text: "Který z uvedených druhů dopravníků se NEŘADİ mezi dopravniky s tažným elementem?", img: null, options: ["Podvěsný dopravník", "Šnekový dopravnik", "Pásový dopravník", "Korečkový dopravnik"], correctIndex: 1 },
+    { text: "Který z uvedených druhů dopravníků se řadí mezi dopravniky s tažným elementem?", img: null, options: ["Eskalátor", "Vibrační dopravnik", "Válečková trať", "Šnekový dopravnik"], correctIndex: 0 },
+    { text: "Který z uvedených druhů dopravníků se jinak nazývá \"elevátor\"?", img: null, options: ["Článkový dopravnik", "Pohyblivé schodiště", "Hřeblový dopravník", "Korečkový dopravnik"], correctIndex: 3 },
+    { text: "Kterým z těchto způsobů NELZE zvýšit dopravované množství materiálu pásovým dopravníkem?", img: null, options: ["Víceválečkovou stolici", "Zvětšením ložné šířky pásu", "Zrychlením pohybu pásu", "Prodloužením délky pásu"], correctIndex: 3 },
+    { text: "Který buben u šikmého pásového dopravníku (doprava materiálu směrem nahoru) bude hnací?", img: null, options: ["Vždy ten níže položený", "Vždy ten výše položený", "Nezáleží na tom, který bude hnací", "Oba musí být hnací"], correctIndex: 1 },
+    { text: "Který druh válečků pod pásem NENALEZNEME u pásového dopravniku?", img: null, options: ["Napínací válečky", "Podpůrné válečky", "Hnací válečky", "Vodici válečky"], correctIndex: 3 },
+    { text: "K jakému druhu dopravy je primárně určen korečkový dopravnik?", img: null, options: ["K osobni dopravě", "K vertikální dopravě", "K horizontální dopravě", "K přerušované dopravě"], correctIndex: 1 },
+    { text: "Který z uvedených druhů dopravníků NENÍ vhodný pro přepravu sypkého materiálu?", img: null, options: ["Hřeblový dopravnik", "Korečkový dopravnik", "Redler", "Článkový dopravník"], correctIndex: 3 },
+    { text: "Který z uvedených druhů dopravníků je NEJMÉNĚ vhodný pro přepravu horkého materiálu?", img: null, options: ["Pásový dopravnik", "Redler", "Hřeblový dopravnik", "Článkový dopravnik"], correctIndex: 0 },
+    { text: "Lze hřeblovými dopravníky a redlery dopravovat materiál horizontálně, šikmo i vertikálně?", img: null, options: ["Ano, oběma je to možně.", "Ne, neni to možně ani u jednoho.", "Lze to pouze hřeblovými dopravniky", "Lze to pouze redlery"], correctIndex: 0 },
+    { text: "K čemu slouží váleček označený červenou šipkou?", img: "So_189.jpg", options: ["Pro zvýšení úhlu opásání pásu na hnacím bubnu", "Pro vedení pásu v tažné větvi", "Pro napínání pásu po celé délce", "Pro podporu pásu ve vratné větvi"], correctIndex: 4 },
+    { text: "Jaký typ dopravniku s tažným elementem je na obrázku?", img: "So_190.jpg", options: ["Korečkový", "Podvěsný", "Nejedná se o dopravník s tažným elementem", "Hřeblový"], correctIndex: 4 },
+    { text: "S jakým typem dopravniku nejpravděpodobněji souvisi tato součást?", img: "So_191.jpg", options: ["S válečkovou tratí", "S elevatorem", "S eskalátorem", "S redlerem"], correctIndex: 4 },
+    { text: "K jakému účelu slouží označená oblast a kde by měla být umístěna (pásový dopravník)?", img: "So_192.jpg", options: ["Napínání - v nejnižším místě", "Napínání - v nejvyšším místě", "Pohon - v nejvyšším místě", "Pohon - v nejnižším místě"], correctIndex: 4 },
+    { text: "Jakým přízviskem by se dal nejlépe označit tento dopravník?", img: "So_193.jpg", options: ["Podvěsný", "Článkový", "Pásový", "Korečkový"], correctIndex: 4 },
+    { text: "Který z uvedených druhů dopravníků se NEŘADÍ mezi dopravniky bez tažného elementu?", img: null, options: ["Korečkový dopravník", "Šnekový dopravník", "Vibrační dopravnik", "Válečková trať"], correctIndex: 0 },
+    { text: "Který z uvedených druhů dopravníků se řadí mezi dopravniky bez tažného elementu?", img: null, options: ["Šnekový dopravník", "Pásový dopravnik", "Elevátor", "Hřeblový dopravnik"], correctIndex: 0 },
+    { text: "Kterým z těchto způsobů NELZE zvýšit dopravované množství materiálu šnekovým dopravníkem?", img: null, options: ["Zvýšením otáček šneku", "Zvětšením rozteče šnekovice", "Snížením hustoty dopravovaného materiálu", "Zvětšením průměru šneku"], correctIndex: 2 },
+    { text: "Jak se nazývá křivka, která tvoří šnek šnekového dopravníku?", img: null, options: ["Šroubovice", "Evolventa", "Cykloida", "Parabola"], correctIndex: 0 },
+    { text: "Lze naplnit dopravni žlab šnekového dopravniku na 100%?", img: null, options: ["Ano, pokud je žlab uzavřený", "Ano, ale jen u některých materiálů", "Ano, zvýší se tím dopravní množství", "Ne, došlo by k pěchování materiálu"], correctIndex: 3 },
+    { text: "Který z těchto dopravníků bez tažného elementu nikdy nepotřebuje pro svoji funkci pohon?", img: null, options: ["Šnekový dopravník", "Vibrační dopravník", "Válečková trať", "Dopravni žlab"], correctIndex: 3 },
+    { text: "Který z těchto dopravníků bez tažného elementu bude při pořízení pravděpodobně nejlevnější?", img: null, options: ["Válečková trať", "Šnekový dopravník", "Dopravní žlab", "Vibrační dopravník"], correctIndex: 2 },
+    { text: "Co je základní podminkou pro to, aby mohl být přepravován materiál v dopravnim žlabu?", img: null, options: ["Dostatečný náklon žlabu", "Dostatečný výkon motoru", "Dostatečný náklon pro překonání tření", "Počáteční rychlost materiálu"], correctIndex: 2 },
+    { text: "Jaký materiál Ize přepravovat pomocí válečkové tratě?", img: null, options: ["Pouze sypké materiály", "Pouze materiály v kapalném stavu", "Pouze kusové materiály", "Jakýkoliv"], correctIndex: 2 },
+    { text: "Jak nemůže být přepravován materiál pomocí válečkové tratě?", img: null, options: ["Samočinně gravitaci", "Pomocí pohonu válečků", "Posouváním lidskou silou", "Překonáním setrvačné síly"], correctIndex: 3 },
+    { text: "Při rychlém pohybu vibračního dopravníku vzad (proti směru dopravy materiálu) je...", img: null, options: ["setrvačná sila větší než třecí.", "třeci sila větší než setrvačná.", "třecí síla větší než gravitačni.", "třecí síla nulová."], correctIndex: 0 },
+    { text: "U kterého z těchto dopravníků bez tažného elementu hraje nejmenší roli smykové tření?", img: null, options: ["Válečková trať", "Snekový dopravník", "Dopravní žlab", "Vibrační dopravnik"], correctIndex: 0 },
+    { text: "Jaký druh dopravniku bez tažného elementu je na obrázku?", img: "So_206.jpg", options: ["Nejedná se o dopravnik bez tažného elementu", "Vibrační", "Šnekový", "Válečkový"], correctIndex: 4 },
+    { text: "K dopravě jakého materiálu se nejlépe hodí šnekovice na obrázku?", img: "So_207.jpg", options: ["Hutnému sypkému materiálu", "Lepivého tekoucího materiálu", "Drobného kusového materiálu", "Hustému plynněmu materiálu"], correctIndex: 4 },
+    { text: "Na obrázku je dopravnik, u kterého Ize upravit jeho celkovou délku. Jak Ize použit pro kusový materiál?", img: "So_208.jpg", options: ["Musí být skloněný", "Max tak dlouhý, aby kus ležel na 3 válečcích", "Kusy nesmí propadnout", "Max. délka v délce rozteče"], correctIndex: 4 },
+    { text: "Existuje případ, kdy může do klece výtahu se zakázanou dopravou osob vstoupit osoba?", img: null, options: ["Ne, v žádném případě", "Ano, pokud se jedná o řidiče", "Ano, k nakládání", "Ano, dle zákona"], correctIndex: 2 },
+    { text: "Do které skupiny výtahů se podle normy řadí tzv. páternoster?", img: null, options: ["Je samostatnou skupinou výtahů", "Výtahy se zakázanou dopravou osob", "Výtahy pro dopravu osob", "Nákladní výtahy"], correctIndex: 2 },
+    { text: "Jaký druh zdvihadla je výtahový stroj, který zvedá a spoušti klec?", img: null, options: ["Kladkostroj", "Visutá kočka", "Zvedák", "Navijedlo"], correctIndex: 3 },
+    { text: "Jaký druh lan se nejčastěji používá jako zvedací prostředky u výtahů?", img: null, options: ["Stejnosměrně vinutá ocelová lana", "Protisměrně vinutá ocelová lana", "Protisměrně vinutá konopná lana", "Stejnosměrně vinutá konopná lana"], correctIndex: 1 },
+    { text: "Jaký druh řetězů se nejčastěji používá jako zvedací prostředky u výtahú?", img: null, options: ["Zubový řetěz", "Ewartüv řetěz", "Válečkový řetěz", "Gallův řetěz"], correctIndex: 3 },
+    { text: "Na co je nutné dát pozor při konstrukci uchyceni kabiny výtahu?", img: null, options: ["Tihu výtahové klece je nezbytné rozdělit rovnoměrně na všechna lana", "Tihu klece lze rozdělit různě na všechna lana", "Počet lan je libovolný, tihu rozdělit rovnoměrně", "Počet lan je libovolný, tihu rozdělit různě"], correctIndex: 0 },
+    { text: "Co musí být v prostoru výtahu vedeno?", img: null, options: ["Jen protizávaži", "Klec i protizávaží", "Nemusí být vedena kabina ani protizávaži", "Jen kabina (klec)"], correctIndex: 1 },
+    { text: "Na jaký druh namáhání jsou namáhána lana?", img: null, options: ["Ohyb", "Tah", "Krut", "Tlak"], correctIndex: 1 },
+    { text: "Jak se nazývá prostor, ve kterém se pohybuje kabina výtahu?", img: null, options: ["Strojovna", "Mezanin", "Šachta", "Závěs"], correctIndex: 2 },
+    { text: "Jakou hmotnost musí mít protizávaží?", img: null, options: ["Součet max nosnosti a půlky hmotnosti kabiny", "Stejnou jako kabina", "Stejnou jako maximální nosnost", "Součet hmotnosti kabiny a půlky max nosnosti"], correctIndex: 3 },
+    { text: "Co z uvedených NENÍ součástí výtahové šachty?", img: null, options: ["Armatury", "Vodítka", "Nárazníky", "Zachycovače"], correctIndex: 0 },
+    { text: "Co NEPATŘÍ mezi nevýhody páternosteru?", img: null, options: ["Nízká přepravní kapacita", "Složitá konstrukce", "Nízká bezpečnost", "Malé dopravní rychlosti"], correctIndex: 0 },
+    { text: "Co NEPATŘÍ mezi výhody hydraulických výtahů?", img: null, options: ["Možnost různého umístění strojovny", "Plynulá jízda kabiny výtahu", "Tichý chod", "Vysoké dopravni rychlosti"], correctIndex: 3 },
+    { text: "Co spojuje celek na obrázku u výtahů?", img: "So_222.jpg", options: ["Lana s pohonným bubnem", "Kabinu s nosnými lany", "Kabinu s vodicími lištami", "Lana s výtahovou šachtou"], correctIndex: 4 },
+    { text: "Jak se nazývá výtah, jehož zjednodušené schéma a reálná podoba je na obrázku?", img: "So_223.jpg", options: ["Oběžný", "Stolový", "Oběžný", "Výsypný"], correctIndex: 4 },
+    { text: "Na obrázku je lano vhodné pro nesení výtahové klece. Jak se nazývá jeho část označená šipkou?", img: "So_224.jpg", options: ["Lanovice", "Duše", "Drát", "Pramen"], correctIndex: 4 },
+    { text: "Jak se nazývá zařízení výtahu na obrázku?", img: "So_225.jpg", options: ["Závěs", "Nárazník", "Zachycovač", "Voditko"], correctIndex: 4 },
+    { text: "Jak se nazývá zařízení na obrázku v souvislosti s výtahy?", img: "So_226.jpg", options: ["Protizávaží", "Zachycovač", "Nárazník", "Omezovač"], correctIndex: 4 },
+    { text: "Co se rozumí pojmem \"vyložení jeřábu\"?", img: null, options: ["Maximální úhel otočení", "Vzdálenost mezi břemenem a hlavní osou jeřábu", "Maximální hmotnost břemene", "Maximální výška zdvihu"], correctIndex: 1 },
+    { text: "Co se rozumí pojmem \"klopný moment\"?", img: null, options: ["Moment vyjadřující míru stability jeřábu", "Okamžik překlopení", "Vzdálenost břemene od zakotvení", "Sila naklápějící jeřáb"], correctIndex: 0 },
+    { text: "Rozdělení jeřábů do únavových skupin je podle...", img: null, options: ["denního počtu cyklů a max vytíženi", "četnosti zdvihů a nosnosti", "celkového počtu cyklů a průměrného vytíženi", "denního počtu cyklů a min vytíženi"], correctIndex: 2 },
+    { text: "Podpěrný mostový jeřáb je:", img: null, options: ["jeřáb pojíždějící po spodní přírubě", "jeřáb umístěný na podpěrných sloupech", "jeřáb pojíždějící shora na vyvýšené jeřábové dráze", "jeřáb mající podpěry a pojíždějící po zemi"], correctIndex: 2 },
+    { text: "Podvěsný mostový jeřáb je:", img: null, options: ["jeřáb se závěsným výložníkem", "jeřáb pojíždějící po spodní přírubě nosníků", "jeřáb umístěný na visuté dráze", "jeřáb pojíždějící shora na vyvýšené dráze"], correctIndex: 1 },
+    { text: "Jeřábová kočka se skládá z:", img: null, options: ["Zvedáku a navijedla", "Pojezdového ústrojí a zvedáku", "Navijedla a kladkostroje", "Pojezdového a zdvíhacího ústroji"], correctIndex: 3 },
+    { text: "Pro lanové kladkostroje se používá lano:", img: null, options: ["Stejnosměrně vinutá", "Protisměrně vinutá konopná", "Protisměrně vinutá ocelová", "Stejnosměrně vinutá konopná"], correctIndex: 2 },
+    { text: "Zkušební břemeno:", img: null, options: ["je břemeno o libovolné hmotnosti", "je břemeno o hmotnosti nosnosti jeřábu", "je břemeno pro zkoušku výkonu", "je břemeno 1,25 násobek nosnosti jeřábu"], correctIndex: 3 },
+    { text: "Účel brzdy zdvihu je:", img: null, options: ["jistit jeřáb před přetížením", "držet břemeno ve zdvižené poloze i když je motor vypnutý", "kontrola životnosti jeřábu", "brzdit zdvih břemene, aby byl bezpečný"], correctIndex: 1 },
+    { text: "Účel pojistné spojky zdvihu je:", img: null, options: ["jistit jeřáb před přetíženim", "zajisti pomalé spouštění břemene", "kontrola životnosti jeřábu", "ochrana motoru"], correctIndex: 0 },
+    { text: "Jeřábová kočka se skládá:", img: null, options: ["z pojezdového zařízení a klikového mechanismu", "z pojezdového a brzdícího ústrojí", "z lanového bubnu a převodu", "z pojezdového a zdvihacího ústroji"], correctIndex: 3 },
+    { text: "Zdvihacím ústrojím jeřábové kočky je kladkostroj:", img: null, options: ["řetězový nebo řemenový", "řetězový nebo lanový", "řemenový nebo ozubený", "pneumatický nebo hydraulický"], correctIndex: 1 },
+    { text: "K čemu slouží důlky na jeřábovém háku?", img: null, options: ["stopy po měření tvrdosti", "měření rozevření háku", "uchycení západky", "uchycení pružiny západky"], correctIndex: 1 },
+    { text: "U lanových kladkostrojů se provádí pravidelná kontrola lana:", img: null, options: ["zjištěním počtu prasklých drátků", "měřením zkrouceni lana", "defektoskopii", "měřením dělky lana a jeho natažení"], correctIndex: 0 },
+    { text: "U řetězového kladkostroje se provádí pravdelná kontrola řetězu:", img: null, options: ["měřením šířky oka a celkové délky řetězu", "zjištěním počtu prasklin na řetězu", "kontrola svarů ok řetězu poklepem", "měřením zeslabeni průřezu drátu a délky mezi oky"], correctIndex: 3 },
+    { text: "Jaký typický druh jeřábu je na obrázku?", img: "So_296.jpg", options: ["Mostový", "Portálový", "Sloupový", "Věžový"], correctIndex: 1 },
+    { text: "Konkrétní nosnost u permanentnich břemenových magnetů se mění podle:", img: "So_297.jpg", options: ["doby provozu", "četnosti zdvihů", "geometrického tvaru přenášeného břemene", "podle polohy upínací páky"], correctIndex: 2 },
+    { text: "Jak se nazývá konstrukce, ze které je vyroben výložník tohoto jeřábu?", img: "So_298.jpg", options: ["Převislá", "Piliřová", "Příhradová", "Prolamovaná"], correctIndex: 2 },
+    { text: "Jakým slovem by se nejlépe dal označit prostředek na obrázku pro uchopování břemen jeřábů?", img: "So_299.png", options: ["Kleště", "Vidle", "Drapák", "Hák"], correctIndex: 0 },
+    { text: "Jak se nazývá (označené) červené zařízení na obrázku?", img: "So_300.jpg", options: ["Výložník", "Navijedlo", "Kladkostroj", "Visutá kočka"], correctIndex: 2 },
+    { text: "Co je to pístové čerpadlo?", img: null, options: ["Hnací pístový stroj pro dopravu plynů", "Hnaci pistový stroj pro dopravu kapalin", "Hnaný pístový stroj pro dopravu kapalin", "Hnaný pístový stroj pro dopravu plynů"], correctIndex: 2 },
+    { text: "Kterému rovinnému obrazci se nejvíce podobá teoretický pracovní digram jednočinného pístového čerpadla?", img: null, options: ["Kosodélníku", "Lichoběžníku", "Trojúhelníku", "Obdélníku"], correctIndex: 3 },
+    { text: "Fáze sání u jednočinného pístového čerpadla. Která informace NENÍ pravdivá?", img: null, options: ["Zmenšuje se pracovni prostor čerpadla.", "Píst se pohybuje z horni úvratě do dolni.", "Sací ventil je otevřený a výtlačný uzavřený.", "V pracovním prostoru čerpadla vzniká podtlak."], correctIndex: 0 },
+    { text: "Fáze výtlaku u jednočinného pistového čerpadla. Která informace NENİ pravdivá?", img: null, options: ["Výtlačný ventil je otevřený a sací uzavřený.", "V pracovnim prostoru čerpadla vzniká podtlak.", "Zmenšuje se pracovní prostor čerpadla.", "Pist se pohybuje z dolni úvratě do horní."], correctIndex: 1 },
+    { text: "Na kterém z uvedených parametrů NEZÁVISÍ výkon motoru pístového čerpadla?", img: null, options: ["Požadovaný objemový prútok", "Geodetická dopravní výška", "Druh čerpané kapaliny", "Kompresní poměr mechanismu"], correctIndex: 3 },
+    { text: "Které z uvedených druhů čerpadel má nejméně rovnoměrný výtok čerpané kapaliny?", img: null, options: ["Dvojčinné čerpadlo", "Jednočinné čerpadlo", "Křidlové čerpadlo", "Diferenciální čerpadlo"], correctIndex: 1 },
+    { text: "Které z uvedených druhů čerpadel má nejrovnoměrnější výtok čerpané kapaliny?", img: null, options: ["Jednočinné čerpadlo", "Diferenciální čerpadlo", "Membránové čerpadlo", "Zdvižné čerpadio"], correctIndex: 1 },
+    { text: "U kterého z uvedených druhů pístových čerpadel lze použít zkrácený klikový mechanismus?", img: null, options: ["jednočinné čerpadlo", "diferenciální čerpadlo", "zdvižné čerpadlo", "dvojčinné čerpadlo"], correctIndex: 0 },
+    { text: "Jak se jmenuje součást pístových čerpadel, která pomáhá zmenšít pulzování tlaku v kapalině?", img: null, options: ["Vzdušník", "Křižák", "Ventil", "Pist"], correctIndex: 0 },
+    { text: "U kterého z uvedených druhú pístových čerpadel DOCHÁZÍ k sání při obou pohybech pístu?", img: null, options: ["Diferenciální čerpadlo", "Jednočinné čerpadlo", "Dvojčinné čerpadlo", "Zdvižné čerpadio"], correctIndex: 2 },
+    { text: "U kterého z těchto druhú pístových čerpadel se nachází ventily přímo v pistu?", img: null, options: ["Zdvižné čerpadlo", "Dvojčinné čerpadlo", "Jednočinné čerpadlo", "Diferenciální čerpadlo"], correctIndex: 0 },
+    { text: "Jaký hydraulický prvek z uvedených je obvykle umístěn v sacím koši na počátku sacího potrubí čerpadla?", img: null, options: ["Redukční ventil", "Zpětný ventil", "Rozvaděč", "Hydromotor"], correctIndex: 1 },
+    { text: "Jak se nazývá druh pistu pistových čerpadel válcového tvaru, který se vyznačuje tím, že je jeho délka větší než průměr?", img: null, options: ["Plunžrový píst", "Trojhranný píst", "Kotoučový pist", "Trubkový píst"], correctIndex: 0 },
+    { text: "Na obrázku je ideální diagram čerpadla. Jak se nazývá fáze, která nastává z bodu 3 do bodu 4?", img: "So_316.jpg", options: ["Izochorické sání", "Izobarický výtlak", "Izobarické sání", "Izochorický výtlak"], correctIndex: 3 },
+    { text: "Ve kterých dvou bodech diagramu se pist nachází v dolní úvrati?", img: "So_317.jpg", options: ["1a2", "1a4", "3a4", "2a3"], correctIndex: 3 },
+    { text: "Jaké typické pístové čerpadlo je na obrázku?", img: "So_318.jpg", options: ["Diferenciálni", "Křídlové", "Vačkové", "Zdvižné"], correctIndex: 1 },
+    { text: "Jak velká je celková \"manometrická\" dopravní výška?", img: "So_319.jpg", options: ["V rozmezí kót A a C", "Přesně jako kóta C", "Větší než kóta A", "Přesně jako kóta A"], correctIndex: 2 },
+    { text: "Co je to kompresor?", img: null, options: ["Hnaný pístový stroj pro dopravu kapalin", "Hnaný pístový stroj pro dopravu plynů", "Hnací pístový stroj pro dopravu kapalin", "Hnací pístový stroj pro dopravu plynů"], correctIndex: 1 },
+    { text: "Fáze komprese u pístového kompresoru. Která informace NENİ pravdivá?", img: null, options: ["Píst se pohybuje z dolni úvratě do homí.", "V pracovnim prostoru vzniká přetlak.", "Zvětšuje se pracovni prostor.", "Saci i výtlačný ventil je uzavřený."], correctIndex: 2 },
+    { text: "Fáze expanze u pístového kompresoru. Která informace NENÍ pravdivá?", img: null, options: ["Zvětšuje se pracovní prostor.", "Fáze probíhá teoreticky podle adiabatického děje.", "Pist se pohybuje z dolní úvratě do horní.", "Sací i výtlačný ventil je uzavřený."], correctIndex: 2 },
+    { text: "Fáze výtlaku u pístového kompresoru. Která informace NENÍ pravdivá?", img: null, options: ["Fáze probíhá teoreticky podle izobarického děje.", "Zmenšuje se pracovní prostor.", "Saci i výtlačný ventil je otevřený.", "Pist se pohybuje z dolni úvratě do horni."], correctIndex: 2 },
+    { text: "Fáze sání u pístového kompresoru. Která informace NENİ pravdivá?", img: null, options: ["Výtlačný ventil je uzavřený", "Pist se pohybuje z horni úvratě do dolní.", "Zvětšuje se pracovni prostor.", "Fáze probíhá teoreticky podle izochorického děje."], correctIndex: 3 },
+    { text: "Co se rozumí pojmem \"kompresni poměr\"?", img: null, options: ["Podil počáteční a konečné hustoty", "Podil počáteční a konečné teploty", "Podil počátečního a konečného objemu", "Podil počátečního a konečného tlaku"], correctIndex: 2 },
+    { text: "Čeho NELZE dosáhnout pomocí vícestupňové komprese?", img: null, options: ["Ušetření potřebné práce pro stlačování", "Vyšší objemové účinnosti kompresoru", "Vysokého sacího tlaku do prvního stupně", "Nižší teploty plynu na konci komprese"], correctIndex: 2 },
+    { text: "Co je řazeno mezi jednotlivými stupni při vicestupňové kompresi?", img: null, options: ["Expander", "Vývěva", "Chladič", "Dmychadlo"], correctIndex: 2 },
+    { text: "Při vícestupňové kompresi: Jaké parametry bude mit plyn na vstupu do druhého stupně oproti výstupu z prvního stupně?", img: null, options: ["Bude mit stejnou teplotu, tlak i objem", "Bude mit vyšší tlak, teplotu i objem", "Bude mit nižší tlak, teplotu a objem", "Bude mit stejný objem, ale nižší teplotu a tlak"], correctIndex: 2 },
+    { text: "Jak se nazývá zařízení, kterým se mění velikost škodlivého pracovního prostoru pistového kompresoru?", img: null, options: ["Reduktor", "Reflektor", "Reaktor", "Restriktor"], correctIndex: 0 },
+    { text: "Kterou z těchto činnosti NELZE regulovat činnost pístového kompresoru?", img: null, options: ["Vhodným ovládáním sacího ventilu", "Chlazením klikového mechanismu", "Změnou otáček kompresoru", "Přepouštěním vytlačovaného plynu do sáni"], correctIndex: 1 },
+    { text: "Jakou funkci NEMÁ přivod oleje ke klikovému mechanismu pistového kompresoru?", img: null, options: ["Odvod odrolených částí materiálů", "Chlazeni kompresoru", "Mazání kompresoru", "Regulace chodu kompresoru"], correctIndex: 3 },
+    { text: "Na obrázku je ideální diagram pístového kompresoru. Jak se nazývá fáze, která nastává z bodu 2 do bodu 3?", img: "So_336.jpg", options: ["Izochorická expanze", "Adiabatická komprese", "Adiabatická expanze", "Izochorická komprese"], correctIndex: 1 },
+    { text: "Na obrázku je skutečný diagram kompresoru. Co se děje během červeně zakroužkované fáze?", img: "So_337.jpg", options: ["Médium je v kompresoru a je stlačováno", "Médium se dostává z prostoru kompresoru", "Médium se dostává do prostoru kompresoru", "Médium je v kompresoru a expanduje"], correctIndex: 2 },
+    { text: "Jak se jmenuje přístroj ke stlačováni plynu na obrázku?", img: "So_338.jpg", options: ["Vodokružná vývěva", "Rootsovo dmychadlo", "Pistový turbokompresor", "Spirálový kompresor"], correctIndex: 1 },
+    { text: "Na obrázku je typický pístový kompresor. Jak se nazývá červená součást, která je jeho součástí?", img: "So_339.jpg", options: ["Vývěva", "Reaktor", "Vzdušnik", "Boiler"], correctIndex: 2 },
+    { text: "Jak by se dala nejlépe pojmenovat součást související s pístovými kompresory na obrázku?", img: "So_340.jpg", options: ["Destičkový ventil", "Reduktor tlaku", "Pist kompresoru", "Hlava válce"], correctIndex: 0 },
+    { text: "Co je to zážehový spalovaci motor?", img: null, options: ["Tepelný hnací pístový stroj", "Tepelný hnací lopatkový stroj", "Tepelný hnaný pístový stroj", "Tepelný hnaný lopatkový stroj"], correctIndex: 0 },
+    { text: "Jak se nazývá zážehový spalovací motor, jehož pist koná rotační pohyb?", img: null, options: ["Stirlingův motor", "Wankelův motor", "Vznětový motor", "Krokový motor"], correctIndex: 1 },
+    { text: "Během kolika otáček klikové hřídele proběhne jeden pracovní cyklus dvoudobého zážehového spalovacího motoru?", img: null, options: ["Během 3 otáček", "Během 4 otáček", "Během 1 otáčky", "Během 2 otáček"], correctIndex: 2 },
+    { text: "Jak se jinak nazývá uspořádání válců \"boxer\" spalovacího motoru?", img: null, options: ["Hvězdicové uspořádání", "Vidlicové uspořádání", "Uspořádání s protiběžnými písty", "Řadové uspořádání"], correctIndex: 2 },
+    { text: "Fáze zážehu u čtyřdobého zážehového spalovacího motoru. Která informace NENI pravdivá?", img: null, options: ["K zážehu dochází samovznicenim", "Po zážehu prudce vzrůstá tlak ve válci", "K zažehu dochází, když je pist před horní úvrati", "Zažehává se směr vzduchu s benzínem"], correctIndex: 0 },
+    { text: "Jaké je přibližně účinnost čtyřdobého zážehového spalovacího motoru?", img: null, options: ["0.3", "0,1", "0.5", "0,7"], correctIndex: 0 },
+    { text: "Jak se nazývá mechanismus, který ovládá činnost ventilů spalovacího motoru?", img: null, options: ["Šroubový mechanismus", "Rozvodový mechanismus", "Klikový mechanismus", "Kulisový mechanismus"], correctIndex: 1 },
+    { text: "Ve kterém technickém detailu z uvedených není podstatný rozdíl mezi dvoudobým a čtyřdobým zážehovým spalovacím motorem?", img: null, options: ["V pracovním cyklu", "V rozvodovém mechanismu", "Ve způsobu zapalování", "V pracovním prostoru"], correctIndex: 2 },
+    { text: "Co NEPATŘÍ mezi nevýhody dvoudobých zážehových spalovacich motorů (oproti čtyřdobým zažehovým)?", img: null, options: ["Nižší výkon", "Vyšší spotřeba paliva", "Nižší účinnost", "Vyšší emise"], correctIndex: 0 },
+    { text: "Jakou veličinu vyjadřuje plocha (obsah) ohraničená skutečným pracovním diagramem dvoudobého zážehového motoru?", img: null, options: ["Měrnou spotřebu paliva", "Užitečnou práci motoru", "Maximální výkon motoru", "Skutečnou účinnost motoru"], correctIndex: 1 },
+    { text: "Pokud se palivo (benzín) dostává do sacího potrubí před škrtici klapkou pomocí přetlaku, pak hovoříme o:", img: null, options: ["karburátoru", "jednobodovém nepřímém vstřikování", "primém vstřikování", "vícebodovém nepřímém vstřikování"], correctIndex: 1 },
+    { text: "Která součást z uvedených NENÍ součástí ventilového rozvodu OHC?", img: null, options: ["Vratná pružina", "Rozvodová tyč", "Vahadlo", "Vačková hřídel"], correctIndex: 1 },
+    { text: "Během které fáze pracovního cyklu čtyřdobého zážehového spalovacího motoru koná motor práci?", img: null, options: ["Během výfuku", "Během expanze", "Během komprese", "Během sáni"], correctIndex: 1 },
+    { text: "Na obrázku je ideální diagram zážehového motoru. Jak se nazývá fáze, která nastává z bodu 4 do bodu 1?", img: "So_356.jpg", options: ["Izochorický přívod tepla", "Adiabatická komprese", "Adiabatická expanze", "Izochorický odvod tepla"], correctIndex: 3 },
+    { text: "Ve kterém z červeně označených bodů dochází k zážehu?", img: "So_357.jpg", options: ["A", "C", "B", "D"], correctIndex: 1 },
+    { text: "Jak se nazývá motor (uspořádání motoru), pokud jsou pisty umístěny tak, jak je vidět na obrázku?", img: "So_358.jpg", options: ["Wankelův", "Vidlicový", "Hvězdicový", "Boxer"], correctIndex: 3 },
+    { text: "Jak se nazývá celek na obrázku?", img: "So_359.jpg", options: ["Ojnice", "Setrvačnik", "Karburátor", "Vahadlo"], correctIndex: 2 },
+    { text: "Kterou pismennou zkratkou by se dal nejlépe označit rozvodový mechanismus motoru na obrázku?", img: "So_360.jpg", options: ["OHV", "SOHC", "SV", "DOHC"], correctIndex: 1 },
+    { text: "Během kolika otáček klikové hřidele proběhne jeden pracovní cyklus čtyřdobého vznětového spalovacího motoru?", img: null, options: ["Během 1 otáčky", "Během 3 otáček", "Během 4 otáček", "Během 2 otáček"], correctIndex: 3 },
+    { text: "Co se nachází ve válci čtyřdobého vznětového motoru na začátku kompresní fáze?", img: null, options: ["Pouze vzduch", "Směs paliva se vzduchem", "Pouze nafta", "Pouze benzin"], correctIndex: 0 },
+    { text: "Fáze vstřiku paliva u čtyřdobého vznětového spalovacího motoru. Která informace NENÍ pravdivá?", img: null, options: ["Po vstřiknutí paliva postupně prudce vzrůstá tlak ve válci", "Palivo se vstřikuje do vzduchu o vysoké teplotě", "K vstřiknutí paliva dochází, když je píst přesně v horní úvrati", "Palivo se vstřikuje do silně stlačeného vzduchu"], correctIndex: 2 },
+    { text: "Jaké je přibližně maximální účinnost čtyřdobého vznětového spalovacího motoru?", img: null, options: ["0,3", "0,4", "0,5", "0,2"], correctIndex: 1 },
+    { text: "Co NEPATŘÍ mezi výhody vznětových spalovacich motorů v porovnání s motory zážehovými?", img: null, options: ["Vyšší efektivní výkon", "Nižší hlučnost", "Vyšší účinnost", "Nižší spotřeba paliva"], correctIndex: 1 },
+    { text: "Co rozumíme pojmem \"kompresní poměr\"?", img: null, options: ["Podil mezi množstvím vzduchu a paliva", "Podil mezi max a min teplotou", "Podil mezi max a min objemem", "Podil mezi max a min tlakem"], correctIndex: 2 },
+    { text: "Jaký děj ideálního plynu popisuje odvod tepla z pracovního prostoru motoru?", img: null, options: ["Izobarický děj", "Adiabatický děj", "Izochorický děj", "Izotermický děj"], correctIndex: 2 },
+    { text: "Která součást z uvedených NENÍ součástí ventilového rozvodu SV?", img: null, options: ["Vačková hřídel", "Vratná pružina", "Vahadlo", "Zdvihátko"], correctIndex: 2 },
+    { text: "Jaké jsou otáčky vačkové hřídele rozvodového mechanismu v porovnání s otáčkami klikové hřídele u čtyřdobého vznětového motoru?", img: null, options: ["Vačková hřídel se otáčí dvakrát rychleji než kliková", "Vačková hřídel se otáčí stejně rychle jako kliková", "Kliková hřídel se otáčí dvakrát rychleji než vačková", "Kliková hřídel se otáči čtyřikrát rychleji než vačková"], correctIndex: 2 },
+    { text: "Kam NEMŮŽE být vstřiknuto palivo u vznětových spalovacích motorů?", img: null, options: ["Do speciálního prostoru v pístu", "Do spalovacího prostoru", "Do sacího potrubi", "Do speciálního prostoru v hlavě válců"], correctIndex: 2 },
+    { text: "Kterou z těchto vad by NEZPŮSOBILO špatné chlazení spalovacích motorů?", img: null, options: ["Korozi kovových částí motoru", "Změny tvaru funkčních součástí motoru", "Nežádoucí spalování oleje", "Nadměrné opotřebení pohyblivých součástí motoru"], correctIndex: 0 },
+    { text: "Na obrázku je ideální diagram vznětového motoru. Jak se nazývá fáze, která nastává z bodu 5 do bodu 1?", img: "So_376.jpg", options: ["Adiabatická komprese", "Izobarický výfuk", "Izotropické sání", "Izochorická expanze"], correctIndex: 0 },
+    { text: "Ve kterém z červeně označených bodů dochází k zavření výfukového ventilu?", img: "So_377.jpg", options: ["A", "B", "C", "D"], correctIndex: 1 },
+    { text: "Z jakého motoru je pist na obrázku?", img: "So_378.png", options: ["Z dvoudobého zážehového s přímým vstřikováním", "Z čtyřdobého zážehového s nepřímým vstřikováním", "Z čtyřdobého vznětového s nepřímým vstřikováním", "Z čtyřdobého vznětového s přímým vstřikováním"], correctIndex: 3 },
+    { text: "K jakému účelu slouží u motoru tento celek?", img: "So_379.jpg", options: ["K přeplňování", "K spalování", "K chlazení", "K mazání"], correctIndex: 0 },
+    { text: "Jak se nazývá součást na obrázku?", img: "So_380.jpg", options: ["Sací ventil", "Katalyzátor výfukových plynú", "Lambda sonda", "Vstřikovač paliva"], correctIndex: 3 },
+    { text: "K jaké změně energie dochází v rotoru odstředivých čerpadel?", img: null, options: ["Kinetická energie se mění na tlakovou", "Mechanická energie se mění na kinetickou a tlakovou", "Mechanická energie se mění na potenciální", "Tlaková energie se mění na kinetickou a mechanickou"], correctIndex: 1 },
+    { text: "Jak se měni energie kapaliny v difuzoru odstředivého čerpadla?", img: null, options: ["Zvyšuje se kinetická energie kapaliny, ale snižuje se jeji tlaková energie", "Zvyšuje se kinetická a tlaková energie kapaliny", "Zvyšuje se tlaková energie kapaliny, ale snižuje se jeji kinetická energie", "Snižuje se kinetická i tlaková energie kapaliny"], correctIndex: 2 },
+    { text: "Co je to odstředivé čerpadlo?", img: null, options: ["Hnaci hydrodynamický lopatkový stroj", "Hnaci hydrostatický pistový stroj", "Hnaný hydrostatický pístový stroj", "Hnaný hydrodynamický lopatkový stroj"], correctIndex: 3 },
+    { text: "Jakým směrem vstupuje kapalina do rotoru všech odstředivých čerpadel?", img: null, options: ["Mimoběžně k ose rotoru", "Rovnoběžně s osou rotoru", "Kolmo k ose rotoru", "Šikmo k ose rotoru"], correctIndex: 1 },
+    { text: "Jakým směrem vystupuje kapalina z rotoru radiálního odstředivého čerpadla?", img: null, options: ["Šikmo k ose rotoru", "Rovnoběžně s osou rotoru", "Mimoběžně k ose rotoru", "Kolmo k ose rotoru"], correctIndex: 3 },
+    { text: "Které z těchto odstředivých čerpadel by se nejpravděpodobněji použilo pro velké prútoky při dopravě kapalin?", img: null, options: ["Radiální čerpadio", "Vířivé čerpadlo", "Diagonální čerpadlo", "Axiální čerpadlo"], correctIndex: 3 },
+    { text: "Jakou funkci má v konstrukci radiálního odstředivého čerpadla tzv. lucerna?", img: null, options: ["Spojuje hydraulickou a mechanickou část stroje", "Slouží k osvětlení čerpadia", "Spojuje mechanickou a ucpávkovou část stroje", "Spojuje hydraulickou a ucpávkovou část stroje"], correctIndex: 0 },
+    { text: "Jaká je jednotka veličiny \"měrná energie\"?", img: null, options: ["J/m", "J/m3", "J/s", "J/kg"], correctIndex: 3 },
+    { text: "Jak se nazývá jev, při kterém v kapalině vzniklé vzduchové dutiny implodují (vyplňují se vodou)?", img: null, options: ["Kapitace", "Kadence", "Karence", "Kavitace"], correctIndex: 3 },
+    { text: "Co je na obrázku (součást čerpadla)?", img: "So_396.jpg", options: ["Difuzor", "Lucerna", "Viřidlo", "Ucpávka"], correctIndex: 0 },
+    { text: "Z jakého typu odstředivého čerpadla je oběžné kolo na obrázku a jakým směrem se otáčí?", img: "So_397.jpg", options: ["Z axiálního po směru hodinových", "Z axiálního proti směru hodinových", "Z radiálního po směru hodinových", "Z radiálního proti směru hodinových"], correctIndex: 3 },
+    { text: "Pro jaké prútoky a dodané (měrné) energie kapalině jsou nejvhodnější tato oběžná kola čerpadel?", img: "So_398.png", options: ["Pro malé prútoky a malé měrné energie", "Pro velké prútoky a velké mémé energie", "Pro velké průtoky a malé měrné energie", "Pro malé prútoky a velké měrné energie"], correctIndex: 2 },
+    { text: "Co se nachází v zakroužkované oblasti (radiální čerpadlo)?", img: "So_400.png", options: ["Ucpávka", "Difuzor", "Ložisko", "Unašeč"], correctIndex: 0 },
+    { text: "Pro jaké podmínky se nejčastěji používají radiální čerpadla?", img: null, options: ["Menší prútoky a větší dopravní výšky", "0", "Střední prútoky a střední dopravní výšky", "Velké průtoky a malé dopravní výšky"], correctIndex: 0 },
+    { text: "Proč se používají vicerstupňová čerpadla?", img: null, options: ["Aby se snížila spotřeba energie", "Aby se zvýšil průtok", "Aby se dosáhlo větší dopravní výšky", "Aby se změnil směr výstupu kapaliny"], correctIndex: 2 },
+    { text: "K jakě přeměně energie dochází ve vodních turbínách?", img: null, options: ["Z mechanické na kinetickou a tlakovou", "Z kinetické a tlakové na potencialni", "Z potenciální na kinetickou a tlakovou", "Z kinetické a tlakové na mechanickou"], correctIndex: 3 },
+    { text: "Pokud má vodní dílo spád 40 m, pak se s největší pravděpodobnosti jedná o vodní dílo...", img: null, options: ["středotlaké.", "vysokotlaké", "přečerpávací.", "nízkotlaké."], correctIndex: 0 },
+    { text: "K čemu ve vodních dílech slouží tzv. česlo?", img: null, options: ["Zastavení průtoku", "Čistění vody", "Demineralizace vody", "Odvod přebytečné vody"], correctIndex: 1 },
+    { text: "Který druh vodní turbíny NENÍ vhodné použít v nízkotlakých vodních dílech?", img: null, options: ["Bánkiho turbína", "Peltonova turbína", "Francisova turbina", "Kaplanova turbina"], correctIndex: 1 },
+    { text: "Které vodní dílo se v České republice nenachází?", img: null, options: ["Nízkotlaké vodni dilo", "Přečerpávací vodní dílo", "Vysokotlaké vodni dilo", "Středotlaké vodni dilo"], correctIndex: 2 },
+    { text: "U kterého druhu vodního dila (vodní elektrárny) dochází ve výsledku ke ztrátě energie (a ne k jejímu získání)?", img: null, options: ["Nízkotlaké vodní dílo.", "Vysokotlaké vodni dilo", "Středotlaké vodní dílo", "Přečerpávací vodní dílo"], correctIndex: 3 },
+    { text: "Který druh turbiny je nejvíce vhodný pro všechny typy vodních děl?", img: null, options: ["Francisova turbína", "Peltonova turbína", "Kaplanova turbina", "Dériazova turbína"], correctIndex: 3 },
+    { text: "Který druh turbíny se neřadí mezi turbíny přetlakové?", img: null, options: ["Francisova turbina", "Kaplanova turbina", "Dériazova turbina", "Peltonova turbina"], correctIndex: 3 },
+    { text: "Pouze jakou energii dokáže zpracovávat rovnotlaká vodní turbína?", img: null, options: ["Mechanická energie", "Kinetická energie", "Tlaková energie", "Potenciální energie"], correctIndex: 1 },
+    { text: "Co se děje s tlakovou a kinetickou energií v trysce před rovnotlakou vodni turbínou?", img: null, options: ["Stoupá tlaková i kinetická energie", "Klesá tlaková i kinetická energie", "Tlaková energie stoupá a kinetická energie klesá", "Kinetická energie stoupá a tlaková energie klesá"], correctIndex: 3 },
+    { text: "Jak se nazývá zařízení, které vypadá jako kuželové potrubí přeměňující kinetickou energii vody na tlakovou?", img: null, options: ["Tryska", "Stavidlo", "Savka", "Spirální skříň"], correctIndex: 2 },
+    { text: "Rotor které z uvedených turbín má obvykle nejmenší počet lopatek?", img: null, options: ["Francisova turbina", "Dériazova turbina", "Kaplanova turbina", "Peltonova turbina"], correctIndex: 2 },
+    { text: "Rotor které z uvedených turbin má natáčecí lopatky pro regulaci jejího chodu?", img: null, options: ["Kaplanova turbina", "Peltonova turbina", "Francisova turbina", "Bánkiho turbina"], correctIndex: 0 },
+    { text: "U které z těchto turbín se regulace neprovádí natočením lopatek?", img: null, options: ["Dériazova turbína", "Peltonova turbina", "Kaplanova turbina", "Francisova turbína"], correctIndex: 1 },
+    { text: "Jaký typ vodního díla je nejpravděpodobněji na obrázku?", img: "SOV_344.jpg", options: ["Středotlaké", "Vysokotlaké", "Nízkotlaké", "Přečerpávací"], correctIndex: 0 },
+    { text: "K jaké turbině patří součást na obrázku?", img: "SOV_345.jpg", options: ["Francisově", "Dériazově", "Peltonově", "Kaplanově"], correctIndex: 2 },
+    { text: "Rotor které turbíny je na obrázku?", img: "SOV_346.jpg", options: ["Bánkiho", "Francisové", "Peltonové", "Kaplanové"], correctIndex: 3 },
+    { text: "Na obrázku je Francisova turbina. K čemu slouží zařízení natřené oranžovou barvou?", img: "SOV_347.jpg", options: ["K natáčení rotorových lopatek", "K odvodu vody z turbiny", "K nastavení polohy spirální skříně", "K regulaci turbiny"], correctIndex: 3 },
+    { text: "Co je to parní turbina?", img: null, options: ["Hnaný pístový stroj", "Hnaci pistový stroj", "Hnaný lopatkový stroj", "Hnaci lopatkový stroj"], correctIndex: 3 },
+    { text: "K jaké přeměně energie dochází v parních turbínách?", img: null, options: ["Tepelná energie se měni na mechanickou", "Tepelná energie se mění na potenciální", "Mechanická energie se mění na kinetickou a tlakovou", "Kinetická a tlaková energie se mění na mechanickou"], correctIndex: 3 },
+    { text: "Ve kterém z uvedených zařízení se nepoužívá (ani nikdy nepoužívala) parní turbina?", img: null, options: ["Větrná elektrárna", "Jaderná elektráma", "Lodni motor", "Uhelná elektrárna"], correctIndex: 0 },
+    { text: "Jak se nazývá zařízení (část) parní turbíny, ve které dochází k přeměně tlakové energie na kinetickou?", img: null, options: ["Kondenzátor", "Oběžné kolo", "Rotor turbíny", "Rozváděcí kola"], correctIndex: 3 },
+    { text: "Které tvrzení o \"rovnotlaké parní turbinë\" NENÍ pravdivé?", img: null, options: ["Rotorem je (plná) hřídel s lopatkami", "Rotor turbíny bývá uložen v kluzných ložiscich", "Je pro ni nejvhodnější vstup páry do turbiny po celém obvodu", "Statorové lopatky jsou vůči rotoru utěsněny labyrintovým těsněním."], correctIndex: 0 },
+    { text: "Které tvrzení o \"přetlakové parní turbíně\" NENÍ pravdivé?", img: null, options: ["Před lopatkou rotoru je menší tlak než za ní", "Součástí turbiny je tzv. Curtisûv stupeň", "Je pro ni nejvhodnější vstup páry do turbíny po celém obvodu", "Rotorem je buben (dutá hřidel) s lopatkami"], correctIndex: 0 },
+    { text: "K jaké přeměně energie dochází v tryskách parních turbin?", img: null, options: ["Kinetická energie se mění v mechanickou", "Tlaková energie se mění v kinetickou", "Kinetická energie se mění v tlakovou", "Mechanická energie se měni kinetickou"], correctIndex: 1 },
+    { text: "Co se děje v rychlostí páry v prostoru mezi lopatkami rotoru rovnotlaké parní turbiny?", img: null, options: ["Klesá", "Nelze jednoznačně určit", "Stoupá", "Je konstantni"], correctIndex: 0 },
+    { text: "Co se děje v rychlostí páry v prostoru mezi lopatkami statoru přetlakové parní turbiny?", img: null, options: ["Klesá", "Nelze jednoznačně určit", "Stoupá", "Je konstantni"], correctIndex: 1 },
+    { text: "Jak se nazývá druh turbíny, u které spaliny vzniklé hořením proudi přímo na lopatky rotoru?", img: null, options: ["Výměníková turbína", "Spalovaci turbína", "Plynová turbína", "Expanzní turbína"], correctIndex: 1 },
+    { text: "Na obrázku je průběh tlaku a rychlosti páry v rovnotlaké parní turbíně. Která fáze odpovídá průběhu mezi statorovými lopatkami?", img: "SOV_358.png", options: ["A", "B", "C", "D"], correctIndex: 1 },
+    { text: "Na obrázku je průběh tlaku a rychlosti páry v přetlakové parní turbíně. Která fáze odpovídá průběhu mezi rotorovými lopatkami?", img: "SOV_359.png", options: ["A", "B", "C", "D"], correctIndex: 2 },
+    { text: "Jaká část a které parní turbíny se nachází na obrázku?", img: "SOV_360.jpg", options: ["Stator rovnotlaké parní turbiny", "Rotor rovnotlaké parní turbiny", "Rotor přetlakové parní turbiny", "Stator přetlakové parni turbiny"], correctIndex: 2 },
+    { text: "Pod kterým číslem na schématu přetlakové parní turbíny se nachází rovnotlaký stupeň?", img: "SOV_361.jpg", options: ["3", "2", "1", "0"], correctIndex: 2 },
+    { text: "Podle způsobu přeměny tlakové energie dělíme parni turbiny na:", img: null, options: ["kondenzační a protitlaké", "s parciálním nebo úplným ostřikem", "rovnotlaké a přetlakovė", "spalovací nebo plynové"], correctIndex: 2 },
+    { text: "Podle výstupu páry z turbíny dělíme turbíny na:", img: null, options: ["s parciálním nebo úplným ostřikem", "rovnotlaké a přetlakové", "spalovací nebo plynové", "kondenzační, protitlaké, odběrové"], correctIndex: 3 },
+    { text: "Kde se kondenzační parní turbína využívá nejčastěji?", img: null, options: ["V teplárnách pro topeni", "V průmyslu pro procesy", "V elektrárnách pro výrobu elektřiny", "V malých domácích kotelnách"], correctIndex: 2 },
+    { text: "Proč je potřeba přidávat palivo do parního kotle?", img: null, options: ["Je to nosič kinetické energie", "Kvůli chlazení při spalování", "Pro zlepšení hoření vzduchu", "Je to nosič chemické energie"], correctIndex: 3 },
+    { text: "Která složka nevstupuje do parního kotle?", img: null, options: ["Palivo", "Vodní pára", "Voda", "Vzduch"], correctIndex: 1 },
+    { text: "Co vzniká hořením paliva se vzduchem?", img: null, options: ["Vodní pára", "Led", "Voda", "Spaliny"], correctIndex: 3 },
+    { text: "Jakou teplotu má zhruba u současných parních generátorů vystupující vodní pára?", img: null, options: ["Kolem 850 °C", "Kolem 250 °C", "Kolem 1150 °C", "Kolem 550 °C"], correctIndex: 3 },
+    { text: "Které ze zmíněných paliv NELZE zařadit mezi tuhá paliva?", img: null, options: ["Mazut", "Hnědé uhli", "Dřevo", "Biomasa"], correctIndex: 0 },
+    { text: "Které ze zmíněných paliv NELZE zařadit mezi tuhá paliva?", img: null, options: ["Zemní plyn", "Propan butan", "Biomasa", "Bioplyn"], correctIndex: 0 },
+    { text: "Který druh kotle se vyznačuje velkou trubkou se zvlněným povrchem, ve které hoří palivo?", img: null, options: ["Plamencový kotel", "Prútočný kotel", "Vodotrubný kotel", "Žárotrubný kotel"], correctIndex: 0 },
+    { text: "Který ze zmíněných kotlů má nejmenší účinnosť?", img: null, options: ["Žárotrubný kotel", "Velkoprostorový kotel", "Plamencový kotel", "Vodotrubný kotel"], correctIndex: 1 },
+    { text: "Se kterým ze zmíněných kotlů lze dosáhnout největšího tlaku vystupující vodní páry?", img: null, options: ["Vodotrubný kotel", "Plamencový kotel", "Žárotrubný kotel", "Průtočný kotel"], correctIndex: 3 },
+    { text: "Jak se jmenuje místo parního generátoru, ve kterém dochází k misení paliva se vzduchem?", img: null, options: ["Ohniště", "Komin", "Ohřívák", "Výparník"], correctIndex: 0 },
+    { text: "Jak se jmenuje místo parního generátoru, ve kterém dochází k přeměně vody na páru?", img: null, options: ["Vodotrubní výparník", "Komin", "Kotlový buben", "Ohniště"], correctIndex: 0 },
+    { text: "Které z těchto druhů ohnišť využívaných pro parní generátory neexistuje?", img: null, options: ["Fluidni ohniště", "Prvkové ohniště", "Roštové ohniště", "Cyklonové ohniště"], correctIndex: 1 },
+    { text: "Co z uvedených NELZE zařadit do přípravy tuhého paliva před jeho použitím parním generátoru?", img: null, options: ["Odstruskování paliva", "Sušeni paliva", "Drcení (mletí) paliva", "Skladování a podávání paliva"], correctIndex: 0 },
+    { text: "Schéma jakého základního typu parního kotle je na obrázku?", img: "SOV_378.png", options: ["Vodotrubný", "Välcový", "Plamencový", "Prútočný"], correctIndex: 2 },
+    { text: "Schéma jakého základního typu ohniště parních kotlů je na obrázku?", img: "SOV_379.png", options: ["Fluidní", "Cyklonové", "Roštové", "Práškové"], correctIndex: 1 },
+    { text: "Jak by se dal nejlépe nazvat celek (část parního kotle) na obrázku?", img: "SOV_380.png", options: ["Odlučovač popílku.", "Vzduchový chladič", "Kotlový buben", "Přehřívák páry"], correctIndex: 3 },
+    { text: "Na obrázku je schéma vysokotlakého parního kotle s dvěma tahy. Jak se nazývá jeho část označená číslem 3?", img: "SOV_381.png", options: ["Tangenciální hořák", "Přehřívák páry", "Kotlový buben", "Ohřívák vzduchu"], correctIndex: 2 },
+    { text: "Co je výhodou teplovodního vytápění?", img: null, options: ["Nehrozí nebezpečí zamrznuti", "Systém nepotřebuje expanzní nádobu", "Bezpečný a jednoduchý provoz", "Krátká doba náběhu"], correctIndex: 2 },
+    { text: "Co nepatří mezi výhody parního vytápění?", img: null, options: ["Vysoký topný výkon", "Nízké provozní náklady", "Nízká teplota otopných tēles", "Rychlý náběh topení"], correctIndex: 3 },
+    { text: "Pokud je teplo pro celý objekt vyráběno v kotli umístěném například v jeho sklepě, pak se jedná o vytápění...", img: null, options: ["etážové.", "ústředni.", "lokálni.", "dálkové."], correctIndex: 1 },
+    { text: "U kterého druhu vytápění lze nejhůře regulovat teplotu z hlediska jeji rovnoměrnosti v objektu?", img: null, options: ["Ústřední vytápění", "Skupinové vytápění", "Lokální vytápění", "Dálkové vytápění"], correctIndex: 2 },
+    { text: "Jakou jednotku má veličina \"tepelný tok\"?", img: null, options: ["Joule", "Watt", "Kelvin", "Newton"], correctIndex: 1 },
+    { text: "Co je to \"konvektor\"?", img: null, options: ["Otopné těleso", "Expanzní nádoba", "Teplovodni kotel", "Rozvodné potrubi"], correctIndex: 0 },
+    { text: "Teplovodni otopná soustava je vybavena otevřenou expanzní nádobou. Kde se tato otevřená expanzní nádoba nachází?", img: null, options: ["V nejvyšší místě soustavy", "Nezáleží na její poloze", "U každého otopného tělesa", "U teplovodního kotle"], correctIndex: 0 },
+    { text: "Pokud v místnosti otevřete okno, pak se jedná o větrání...", img: null, options: ["lokální.", "přirozené.", "samočinné.", "nucené."], correctIndex: 1 },
+    { text: "Co nepatří mezi výhody vysokotlaké klimatizace?", img: null, options: ["Snazší instalace zařízení", "Nastavení odlišné teploty pro každou místnost", "Velmi nízká cena celého zařízeni", "Menší rozměry rozvodného potrubi"], correctIndex: 2 },
+    { text: "Co je to tzv. výparné teplo?", img: null, options: ["Teplo, které látka potřebuje ke změně svého skupenství", "Teplo, které se přemění v mechanickou energii", "Teplo, které se z látky samovolně uvolňuje", "Teplo, které látka vydá do okolí při vypařování"], correctIndex: 0 },
+    { text: "Co musí splňovat chladící kapalina, aby byla vhodná pro použití do chladícího okruhu?", img: null, options: ["Musi mit vysokou hodnotu výparného tepla", "Musí mít vysokou teplotu varu", "Musí mít vysokou hustotu v kapalné formě", "Musí mít vysokou cenu"], correctIndex: 0 },
+    { text: "Co se děje ve výparníku chladicího oběhu?", img: null, options: ["Chladivo je plynné a opouští ho plynné", "Chladivo je kapalné a opouští ho plynné", "Chladivo je kapalné a opouští ho kapalné", "Chladivo je plynné a opouští ho kapalné"], correctIndex: 1 },
+    { text: "Pokud kompresorový chladicí oběh principiálně využíváme k vytápění, pak se jedná o...", img: null, options: ["absorpční chlazení.", "tepelné čerpadlo.", "decentralizovanou klimatizaci.", "teplovzdušné vytápění."], correctIndex: 1 },
+    { text: "Jaký druh otopného tělesa se nachází na obrázku?", img: "SOV_395.jpg", options: ["Článkové", "Trubkové", "Deskové", "Konvektorové"], correctIndex: 0 },
+    { text: "K čemu u teplovodního vytápění slouží celek na obrázku?", img: "SOV_396.png", options: ["K zajištění proti zamrznuti", "K zrychlení doby náběhu", "K zachycování změny objemu vody", "K zajištění přirozeného proudění vody"], correctIndex: 2 },
+    { text: "O jaký druh vytápění se jedná, pokud se pro vytápění použije zdroj tepla na obrázku?", img: "SOV_397.png", options: ["Ústředni", "Lokální", "Etážové", "Dálkové"], correctIndex: 1 },
+    { text: "Na obrázku je chladící okruh ledničky. Jak se nazývá část označená písmenem A?", img: "SOV_398.png", options: ["Absorber", "Kondenzátor", "Varnik", "Výparník"], correctIndex: 1 },
+    { text: "Z jednotky tepelného čerpadla na obrázku vlevo vedou trubky pouze do vytápěného objektu. O jaký druh se jedná?", img: "SO_399.jpg", options: ["Voda - voda", "Vzduch-vzduch", "Vzduch-voda", "Země - voda"], correctIndex: 2 },
+    { text: "Jakou energii získáváme z jaderného reaktoru?", img: null, options: ["Jadernou energii", "Potenciální energii", "Tepelnou energii", "Chemickou energii"], correctIndex: 2 },
+    { text: "Čim se štěpi nuklid (atom) uranu?", img: null, options: ["Pomoci moderátoru", "Volným neutronem", "Gama zářením", "Přívodem tepla"], correctIndex: 1 },
+    { text: "V jádře atomu se nachází...", img: null, options: ["protony a neutrony.", "pouze protony.", "pouze neutrony.", "protony a elektrony."], correctIndex: 0 },
+    { text: "Co má za úkol v jaderném reaktoru tzv. moderátor?", img: null, options: ["Zpomalovat neutrony", "Zrychlovat neutrony", "Pohicovat neutrony", "Odrážet neutrony"], correctIndex: 0 },
+    { text: "Co je hlavní funkci regulačních tyčí v jaderném reaktoru?", img: null, options: ["Chladit palivové články", "Pohlcovat neutrony a regulovat reakci", "Zpomalovat neutrony", "Převádět teplo na mechanickou energii"], correctIndex: 1 },
+    { text: "Který typ reaktoru se v ČR používá v jaderných elektrárnách Dukovany a Temelin?", img: null, options: ["Tlakovodní reaktor (PWR)", "Rychlý sodíkový reaktor", "Grafitový reaktor", "Tlakový reaktor s těžkou vodou (CANDU)"], correctIndex: 0 },
+    { text: "Co je tzv. řetězová reakce?", img: null, options: ["Tok vody přes jednotlivé stupně turbíny", "Sériové spalování paliva", "Přeměna elektrické energie zpět na teplo", "Opakující se štěpení atomových jader"], correctIndex: 3 },
+    { text: "Co je to kontejnment?", img: null, options: ["Betonové a ocelové stěny kolem reaktoru", "Turbína a generátor", "Chladicí věž", "bezpečnostní signalizační systém"], correctIndex: 0 },
+    { text: "Který z těchto chemických vzorců NEOZNAČUJE látku používanou jako chladivo v jaderných reaktorech?", img: null, options: ["DO2", "D20", "H2O", "CO2"], correctIndex: 0 },
+    { text: "K čemu slouží v jaderném reaktoru tzv. reflektor?", img: null, options: ["Ke zrychlování neutronů", "K odrážení neutronů", "K pohlcování neutronů", "Ke zpomalování neutronů"], correctIndex: 1 },
+    { text: "V jakém skupenství se dopravuje palivo do jaderného reaktoru?", img: null, options: ["V kapalném skupenství", "V pevném skupenstvi", "V plynném skupenství", "V plazmatickém skupenstvi"], correctIndex: 1 },
+    { text: "Která z těchto druhů elektráren se NEŘADÍ mezi tepelné?", img: null, options: ["Jaderná elektrárna", "Solární elektrárna", "Uhelná elektrárna", "Paroplynová elektráma"], correctIndex: 1 },
+    { text: "Která z těchto druhú elektráren se NEŘADÍ mezi ty, které používají pro výrobu elektrické energie obnovitelný zdroj energie?", img: null, options: ["Větrné elektráma", "Paroplynová elektrárna", "Vodní elektrárna", "Solární elektrárna"], correctIndex: 1 },
+    { text: "Jak dlouho po vyjmutí z jaderného reaktoru se skladuje (chladi a stini) použité palivo ve vodě?", img: null, options: ["Cca 10 měsíců", "Cca 10 týdnů", "Cca 10 dní", "Cca 10 let"], correctIndex: 3 },
+    { text: "Jakou zkratkou Ize označit jaderný reaktor, jehož schéma je na obrázku?", img: "SO_414.jpg", options: ["PHWR", "GCR", "BWR", "PWR"], correctIndex: 3 },
+    { text: "Jakou zkratkou Ize označit jaderný reaktor, jehož schéma je na obrázku?", img: "SO_415.jpg", options: ["Tlakovodni", "Těžkovodni", "Varný", "Lehkovodni"], correctIndex: 2 },
+    { text: "K čemu dochází ve čtyřech šedých velkých objektech na obrázku (Dukovany)?", img: "SO_499.jpg", options: ["K vypouštění nevyužité vodní páry", "K odvodu vzniklé páry z jaderném reaktoru", "K zvýšení tahu spalin z plynové turbíny", "K chlazení použité chladící vody"], correctIndex: 3 },
+    { text: "Jak se nazývá prvek na schématu (nakreslený modrou barvou a označený červenou šipkou)?", img: "SO_500.png", options: ["Kontejnment", "Moderátor", "Odštěpek", "Absorbátor"], correctIndex: 1 }
+    ];
+
+    const questionsSTT = [
+    { text: "Nástrojové úhly platí α, β, γ, δ jsou úhly:", img: null, options: ["a čela, ẞ břitu, y hřbetu, řezu", "a hřbetu, ẞ břitu, čela, řezu", "a břitu, ẞ hřbetu, y čela, řezu", "a čela, ẞ břitu, y řezu, δ hřbetu"], correctIndex: 1 },
+    { text: "Nástrojové úhly platí , x, x jsou úhly:", img: null, options: ["řezu, x nastavení hlavního ostří, x nastavení vedlejšího ostří", "špičky nástroje, X nastavení vedlejšího ostří, x nastavení hlavního ostří", "špičky nástroje, X nastavení hlavního ostří, x nastavení vedlejšího ostří", "čela, x'nastavení hlavního ostří, x nastavení vedlejšího ostří"], correctIndex: 2 },
+    { text: "Nástrojové úhly - je úhel řezu a platí:", img: null, options: ["δ=α+y", "δ=α+β", "δ=α+ε", "δ=y+β"], correctIndex: 1 },
+    { text: "Kinematika obrábění - hlavní řezný pohyb při soustružení je:", img: null, options: ["rotační nástroje", "rotační obrobku", "posuvný obrobku", "přímočarý vratný nástroje"], correctIndex: 1 },
+    { text: "Kinematika obrábění - hlavní řezný pohyb při frézování je:", img: null, options: ["přímočarý vratný nástroje", "rotační obrobku", "posuvný obrobku", "rotační nástroje"], correctIndex: 3 },
+    { text: "Kinematika obrábění - hlavní řezný pohyb při obrážení je:", img: null, options: ["posuvný obrobku", "rotační obrobku", "přímočarý vratný obrobku", "přímočarý vratný nástroje"], correctIndex: 3 },
+    { text: "Kinematika obrábění - hlavní řezný pohyb při hoblování je:", img: null, options: ["rotační obrobku", "přímočarý vratný nástroje", "přímočarý vratný obrobku", "posuvný nástroje"], correctIndex: 2 },
+    { text: "Kinematika obrábění - hlavní řezný pohyb při broušení je:", img: null, options: ["přímočarý vratný obrobku", "přímočarý vratný nástroje", "rotační obrobku", "rotační nástroje"], correctIndex: 3 },
+    { text: "Kinematika obrábění - hlavní řezný pohyb při vrtání je:", img: null, options: ["rotační nástroje", "posuvný obrobku", "rotační obrobku", "posuvný nástroje"], correctIndex: 0 },
+    { text: "Nástrojové oceli jsou:", img: null, options: ["technické diamanty, legované, rychlořezné, na lité nástroje", "technické diamanty, nelegované, rychlořezné, na lité nástroje", "slinuté karbidy, legované, rychlořezné, technické diamanty", "nelegované, legované, rychlořezné, na lité nástroje"], correctIndex: 3 },
+    { text: "Tvrdé řezné materiály jsou:", img: null, options: ["slinuté karbidy, keramické materiály, technické diamanty, legované oceli", "slinuté karbidy, nelegované oceli, technické diamanty, kubický nitrid boru", "slinuté karbidy, keramické materiály, technické diamanty, kubický nitrid boru", "slinuté karbidy, keramické materiály, legované oceli, kubický nitrid boru"], correctIndex: 2 },
+    { text: "Tříska tvářená plynulá nebo tvářená článkovitá je charakteristická pro:", img: null, options: ["sklo, dřevo", "křehké kovové materiály", "houževnaté materiály", "křehké nekovové materiály"], correctIndex: 2 },
+    { text: "Tříska elementární vytrhávaná je charakteristická pro:", img: null, options: ["sklo, porcelán", "houževnaté kovové materiály", "houževnaté nekovové materiály", "slitiny hliníku"], correctIndex: 0 },
+    { text: "Největší vliv na drsnost obrobené plochy má:", img: null, options: ["geometrie břitu", "řezné prostředí", "řezná rychlost", "posuv"], correctIndex: 3 },
+    { text: "Teplo, které při obrábění vzniká, odchází do:", img: null, options: ["nástroje, okolí, třísky", "třísky, nástroje, obrobku", "třísky, obrobku, nástroje, okolí", "nástroje, třísky, prostředí"], correctIndex: 2 },
+    { text: "Rozdělení soustružnických nožů podle materiálu břitu:", img: null, options: ["přímé a ohnuté nože", "nože z rychlořezné oceli, slinutého karbidu, kubického nitridu bóru", "nože levé, pravé, souměrné", "ubírací, zapichovací, závitové, tvarové nože"], correctIndex: 1 },
+    { text: "Vyměnitelné břitové destičky:", img: null, options: ["mívají více břitů a přeostřují se", "mívají jeden břit a přeostřují se", "mívají více břitů a nepřeostřují se", "mívají jeden břit a nepřeostřují se"], correctIndex: 2 },
+    { text: "Nejpřesnější upnutí obrobku při soustružení je:", img: null, options: ["mezi hroty", "do univerzálního sklíčidla", "na lícní desku", "do kleštin"], correctIndex: 0 },
+    { text: "Soustruhy ČELNÍ jsou určeny pro:", img: null, options: ["krátké součásti velkých průměrů", "dlouhé součásti malých průměrů", "krátké součásti malých průměrů", "dlouhé součásti velkých průměrů"], correctIndex: 0 },
+    { text: "Svislé soustruhy - KARUSELY jsou určeny pro:", img: null, options: ["malé, lehké obrobky a mají vodorovnou osu otáčení", "velké, těžké obrobky a mají svislou osu otáčení", "velké, těžké obrobky a mají vodorovnou osu otáčení", "malé, lehké obrobky a mají svislou osu otáčení"], correctIndex: 1 },
+    { text: "Poloautomatické soustruhy mají automatický pracovní cyklus:", img: null, options: ["včetně upnutí a odepnutí obrobku", "včetně upnutí obrobku", "kromě upnutí a odepnutí obrobku", "kromě upnutí obrobku"], correctIndex: 2 },
+    { text: "Automatické soustruhy mají automatický pracovní cyklus:", img: null, options: ["kromě upnutí a odepnutí obrobku", "kromě upnutí obrobku", "včetně upnutí obrobku", "včetně upnutí a odepnutí obrobku"], correctIndex: 3 },
+    { text: "Točivý moment u nástrčné frézy se přenáší:", img: null, options: ["tvarovým spojem, většinou perem", "srdcem", "ozubeným kolem", "kolíkem"], correctIndex: 0 },
+    { text: "Frézky", img: null, options: ["jsou přípravky pro frézování", "jsou nástroje na frézování", "jsou etalony pro frézování", "jsou stroje na frézování"], correctIndex: 3 },
+    { text: "U vodorovné konzolové frézky je vřeteno:", img: null, options: ["pod úhlem 30°k pracovnímu stolu", "pod úhlem 60°k pracovnímu stolu", "rovnoběžné s pracovním stolem", "kolmé na pracovní stůl"], correctIndex: 2 },
+    { text: "U svislé konzolové frézky je vřeteno:", img: null, options: ["rovnoběžné s pracovním stolem", "kolmé na pracovní stůl", "pod úhlem 30°k pracovnímu stolu", "pod úhlem 60°k pracovnímu stolu"], correctIndex: 1 },
+    { text: "U rovinné frézky se pracovní stůl pohybuje pouze:", img: null, options: ["v šikmém směru", "v podélném směru", "ve svislém i podélném směru", "ve svislém směru"], correctIndex: 1 },
+    { text: "Při výrobě ozubených kol dělícím způsobem, upínáme do dělícího přístroje:", img: null, options: ["nástroj", "obrobek", "nic, nepotřebujeme ho", "můžeme obrobek i nástroj"], correctIndex: 1 },
+    { text: "Hoblovací nože jsou podobné:", img: null, options: ["brusným kotoučům", "frézám", "soustružnickým nožům", "vrtákům"], correctIndex: 2 },
+    { text: "Obrážecí nože jsou podobné:", img: null, options: ["vrtákům", "frézám", "brusným kotoučům", "soustružnickým nožům"], correctIndex: 3 },
+    { text: "Při jemném soustružení mám:", img: null, options: ["velký posuv", "malou řeznou rychlost", "velkou hloubku třísky", "vysokou řeznou rychlost"], correctIndex: 3 },
+    { text: "Při jemném frézování mám:", img: null, options: ["malou řeznou rychlost", "velkou hloubku třísky", "vysokou řeznou rychlost", "velký posuv"], correctIndex: 2 },
+    { text: "Při honování vykonává nástroj:", img: null, options: ["pouze otáčivý pohyb", "pouze posuvný pohyb", "otáčivý i přímočarý vratný pohyb", "pouze přímočarý vratný pohyb"], correctIndex: 2 },
+    { text: "Honování je v podstatě:", img: null, options: ["broušení malou řeznou rychlostí bez přívodu chladící kapaliny", "broušení velkou řeznou rychlostí bez přívodu chladící kapaliny", "broušení malou řeznou rychlostí za vydatného přívodu chladící kapaliny", "broušení velkou řeznou rychlostí za vydatného přívodu chladící kapaliny"], correctIndex: 2 },
+    { text: "Honovat můžeme pouze:", img: null, options: ["vnitřní i vnější rotační i rovinné plochy", "vnitřní rotační plochy", "vnitřní rovinné plochy", "vnitřní rotační i rovinné plochy"], correctIndex: 1 },
+    { text: "Co neopravujeme honováním:", img: null, options: ["kuželovitost", "vlnitost ploch", "souosost", "ovalitu"], correctIndex: 2 },
+    { text: "Lapovat můžeme:", img: null, options: ["pouze strojně, ostrým nástrojem", "pouze ručně", "ručně i strojně", "pouze strojně"], correctIndex: 2 },
+    { text: "Lapování nám umožňuje pouze:", img: null, options: ["vysokou jakost obrobeného povrchu a přesný tvar", "přesné rozměry a tvar", "vysokou jakost obrobeného povrchu, přesné rozměry a tvar", "vysokou jakost obrobeného povrchu a přesné rozměry"], correctIndex: 2 },
+    { text: "Lapovací nástroj:", img: null, options: ["má tvar lapované plochy", "má negativní tvar lapované plochy", "je tvořen brusnými zrny rozptýlenými v pastě", "je tvořen brusnými zrny rozptýlenými v kapalině"], correctIndex: 1 },
+    { text: "Superfinišovací kámen koná pouze:", img: null, options: ["kmitavý pohyb", "kmitavý a zároveň přímočarý pohyb", "přímočarý pohyb", "rotační a zároveň přímočarý pohyb"], correctIndex: 1 },
+    { text: "Superfinišováním lze obrábět pouze:", img: null, options: ["všechny druhy materiálů", "oceli a litiny", "plasty, hliník a měď", "sklo a litiny"], correctIndex: 1 },
+    { text: "Superfinišovat můžeme pouze:", img: null, options: ["vnitřní rotační i rovinné plochy", "vnější rotační i rovinné plochy", "vnitřní i vnější rotační i rovinné plochy", "vnitřní rovinné plochy"], correctIndex: 1 },
+    { text: "Superfinišováním zlepšujeme kvalitu obrobeného povrchu:", img: null, options: ["tvarovou přesnost nezlepšujeme", "i všechnu geometrickou přesnost", "i tvarovou přesnost kromě souososti", "i válcovitost a kruhovitost"], correctIndex: 0 },
+    { text: "Leštění odstraní nečistoty, drobné nerovnosti a zlepšuje pouze:", img: null, options: ["geometrickou a rozměrovou přesnost", "vzhled", "vzhled a geometrickou přesnost", "vzhled a rozměrovou přesnost"], correctIndex: 1 },
+    { text: "Leštění nepoužíváme před", img: null, options: ["nátěrem", "chemickou ochranou povrchu", "chromováním", "niklováním"], correctIndex: 0 },
+    { text: "Pří omílání máme v omílacím bubnu pouze:", img: null, options: ["aktivní kapalinu a obrobky", "aktivní kapalinu a abrazivní materiál", "abrazivní materiál a obrobky", "aktivní kapalinu, abrazivní materiál a obrobky"], correctIndex: 3 },
+    { text: "Omíláním zlepšujeme:", img: null, options: ["přesnost rozměru a tvaru", "drsnost povrchu a přesnost rozměru", "drsnost povrchu a přesnost rozměru a tvaru", "drsnost povrchu"], correctIndex: 3 },
+    { text: "Válečkováním dochází v povrchové vrstvě ke zvýšení:", img: null, options: ["pouze pevnosti a tvrdosti", "pevnosti, tvrdosti a vzniku příznivých tlakových napětí", "pouze pevnosti a vzniku příznivých tlakových napětí", "pouze tvrdosti a vzniku příznivých tlakových napětí"], correctIndex: 1 },
+    { text: "Kuličkováním dochází v povrchové vrstvě ke zvýšení:", img: null, options: ["pouze pevnosti a tvrdosti", "pouze pevnosti a vzniku příznivých tlakových napětí", "pouze tvrdosti a vzniku příznivých tlakových napětí", "pevnosti, tvrdosti a vzniku příznivých tlakových napětí"], correctIndex: 3 },
+    { text: "Podle kinematiky obrábění ozubených kol rozdělujeme výrobu na:", img: null, options: ["protahování a tváření", "soustružení a frézování", "obrážení a frézování", "dělícím a odvalovacím způsobem"], correctIndex: 3 },
+    { text: "Při výrobě ozubených kol dělícím způsobem je v dělícím přístroji upnut:", img: null, options: ["měřidlo", "obrobek", "nástroj", "nástroj i obrobek"], correctIndex: 1 },
+    { text: "Frézování ozubených kol dělícím způsobem se provádí", img: null, options: ["pouze tvarovou nástrčnou frézkou", "tvarovou stopkovou nebo tvarovou nástrčnou frézou", "pouze tvarovou stopkovou frézou", "tvarovou stopkovou nebo tvarovou nástrčnou frézkou"], correctIndex: 3 },
+    { text: "Při obrážení ozubených kol dělícím způsobem má nástroj:", img: null, options: ["tvar zubu ozubeného kola a upíná se do dělícího přístroje", "tvar zubu ozubeného kola, do dělícího přístroje se upíná obrobek", "tvar zubové mezery, do dělícího přístroje se upíná obrobek", "tvar zubové mezery a upíná se do dělícího přístroje"], correctIndex: 2 },
+    { text: "Při obrážení odvalovacím způsobem je nástrojem:", img: null, options: ["pouze kotoučový obrážecí nůž", "kotoučová nebo stopková odvalovací fréza", "pouze hřebenový obrážecí nůž", "kotoučový nebo hřebenový obrážecí nůž"], correctIndex: 3 },
+    { text: "Výroba ozubených kol protahováním je určena pro:", img: null, options: ["hromadnou výrobu, obrobek je upnut v dělícím přístroji", "kusovou výrobu, nástroj je upnut v dělícím přístroji", "hromadnou výrobu, nástroj je upnut v dělícím přístroji", "kusovou výrobu, obrobek je upnut v dělícím přístroji"], correctIndex: 0 },
+    { text: "Dokončovací operace čelních ozubených kol NENÍ:", img: null, options: ["jemné soustružení", "ševingování", "lapování", "broušení"], correctIndex: 0 },
+    { text: "Ševingování je vhodná:", img: null, options: ["hrubovací operace pro nekalená kola", "dokončovací operace pro nekalená kola", "dokončovací operace pro kalená kola", "hrubovací operace pro kalená kola"], correctIndex: 1 },
+    { text: "V plošně středěné krystalové mřížce krystalizují kovy", img: null, options: ["Platina, zinek, železo alfa", "Zlato, stříbro, železo alfa", "Měď, hliník, železo gama", "Titan, wolfram, železo alfa"], correctIndex: 2 },
+    { text: "V krystalové mřížce prostorově středěné krystalizují kovy", img: null, options: ["Titan, tantal, wolfram", "Měď, nikl, železo alfa", "Zlato, platina, stříbro", "Chrom, molybden, železo alfa"], correctIndex: 3 },
+    { text: "V šesterečné krystalové mřížce krystalizují", img: null, options: ["Chrom, zinek, tantal", "Lithium, zinek, vanad", "Zinek, kobalt, titan", "Rtuť, beryllium, magnesium"], correctIndex: 2 },
+    { text: "Co je teplotní hystereze u chladnutí a ohřevu čistých kovů", img: null, options: ["Jev, při kterém teplota tání čistého kovu leží výše než teplota krystalizace", "Jev, při kterém je teplota krystalizace čistého kovu výše než teplota tání", "Jev, který se vůbec nevyskytuje", "Jev, při kterém je teplota tání a teplota krystalizace stejná"], correctIndex: 0 },
+    { text: "Austenit je", img: null, options: ["Směs krystalů cementitu a feritu", "Tuhý roztok uhlíku v železe gama", "Tuhý roztok uhlíku v železe alfa", "Směs krystalů feritu a ledeburitu"], correctIndex: 1 },
+    { text: "Ferit je", img: null, options: ["Směs krystalů feritu a ledeburitu", "Tuhý roztok uhlíku v železe gama", "Tuhý roztok uhlíku v železe alfa", "Směs krystalů cementitu a doprovodných prvků"], correctIndex: 2 },
+    { text: "Teplota AC1 v diagramu Fe-Fe3C je", img: null, options: ["911 °C", "800 °C", "727 °C", "1400 °C"], correctIndex: 2 },
+    { text: "Segregační křivka Acm v diagramu Fe-Fe3C je", img: null, options: ["Křivka, na které se segregují zrna čistého železa", "Křivka, na které se segregují zrna cementitu", "Křivka, na které se segregují zrna austenitu", "Křivka, na které se segregují zrna feritu"], correctIndex: 1 },
+    { text: "Tahový diagram znázorňuje", img: null, options: ["Tvrdost materiálu", "Měkkost materiálu", "Ohebnost materiálu na poměrném prodloužení", "Závislost napětí materiálu na poměrném prodloužení"], correctIndex: 3 },
+    { text: "Zkušební tělísko u zkoušky tahem má tvar", img: null, options: ["Tyčinky ze speciální oceli s trojúhelníkovým průřezem", "Tyčinky, která má libovolný tvar", "Tyčinky, která je zpevněna plastem na obou koncích", "Tyčinky s vyznačenými body před zkouškou"], correctIndex: 3 },
+    { text: "Bod ω'' na tahovém diagramu je", img: null, options: ["Mez napětí, kde výslednicí ke přímka", "Tento bod se v tahovém diagramu nevyskytuje", "Mez úměrnosti, kde výslednicí je lehká křivka", "Mez úměrnosti, kde výslednicí je přímka"], correctIndex: 3 },
+    { text: "Urči, co vidíš na obrázku:", img: "NO_STT_22.png", options: ["Normalizační žíhání", "Žíhání na měkko", "Rekrystalizační žíhání", "Žíhání na snížení pnutí"], correctIndex: 2 },
+    { text: "Bod E\" na tahovém diagramu je", img: null, options: ["Mez napětí, kde se materiál lehce natrhne", "Mez elasticity, do které se jedná o vratné deformace", "Mez elasticity, kde se materiál stává kapalinou", "Mez elasticity, kde vznikne první trhlinka, která se šíří dál"], correctIndex: 1 },
+    { text: "Bod K\" v tahovém diagramu je", img: null, options: ["Mez kluzu, kterému odpovídá hodnota Re ve strojnických tabulkách", "Mez destrukce, kde vznikne první trhlinka, která se šíří dál", "Mez napětí, kde se materiál stává kapalinou", "Mez kluzu, která odpovídá hodnotě Rm se strojnických tabulkách"], correctIndex: 0 },
+    { text: "Bod,,P\" v tahovém diagramu je", img: null, options: ["Mez kluzu, která odpovídá hodnotě Re se strojnických tabulkách", "Mez pevnosti, do které se jedná o vratné deformace", "Mez pevnosti, kde vznikne první trhlinka, která se šíří dál", "Tento bod se v tahovém diagramu nevyskytuje"], correctIndex: 2 },
+    { text: "Tvárnost u kovů a jejich slitin je:", img: null, options: ["Schopnost měnit svůj tvar působením vnější síly při plastické deformaci bez přerušení celistvosti materiálu", "Teplota tvárného materiálu", "Tvrdost materiálu", "Deformační chování materiálu s porušením materiálu"], correctIndex: 0 },
+    { text: "Tvárnost u kovů a jejich slitin úzce souvisí S", img: null, options: ["Chemickým složením, teplotou viskózního toku, teplotou skelného přechodu", "Vnitřní stavbou materiálu, teplotou tvárného materiálu, druhem tvářecího procesu", "Viskozitou materiálu", "Houževnatostí materiálu"], correctIndex: 1 },
+    { text: "Zkouška rázem v ohybu se provádí kvůli", img: null, options: ["Zjištění tvrdosti daného materiálu", "Zjištění spotřebované energie potřebné k přeražení vzorku", "Zjištění, jaké má materiál chemické složení", "Zjištění objemu materiálu před zkouškou a po zkoušce"], correctIndex: 1 },
+    { text: "Výsledkem u zkoušky rázem v ohybu jsou jednotky", img: null, options: ["N*m", "N", "kWh", "J"], correctIndex: 3 },
+    { text: "U zkoušky rázem v ohybu zjišťujeme", img: null, options: ["Výkon", "Hodnotu tvrdosti", "Termodynamickou teplotu", "Houževnatost materiálu"], correctIndex: 3 },
+    { text: "Tvrdost je:", img: null, options: ["Schopnost materiálu odolávat pronikání cizích předmětů do objemu materiálu", "Jak je předmět nebo zkoumaná součást chemicky odolná", "Jak je součást nebo polotovar křehký", "Je to veličina, která se nezkoumá"], correctIndex: 0 },
+    { text: "Tvrdost se zkoumá:", img: null, options: ["Metodami dle diagramu IRA, ARA", "Metodami dle Brinella, Rockwella a Vickerse", "Metodou dle Charpyho kladiva", "Metodami jen na základě empirického poznání"], correctIndex: 1 },
+    { text: "Zkouška tvrdosti dle Brinella se provádí:", img: null, options: ["Vtlačováním diamantu do povrchu materiálu a otisk je výslednicí", "Vtlačování kubického nitridu bóru do materiálu a otisk je výslednicí", "Vtlačováním diamantového kužele do materiálu a výsledný otisk se vyhodnocuje dle kružnic", "Vtlačováním kuličky Iz tvrdokovu a zjišťováním průměru otisku"], correctIndex: 3 },
+    { text: "Zkouška tvrdosti dle Vickerse se provádí", img: null, options: ["Vtlačováním ocelové kuličky", "Vtlačováním kuličky ze slinutých karbidů", "Vtlačováním diamantového kužele do materiálu a výsledný otisk se vyhodnocuje dle kružnic", "Vtlačováním diamantového jehlanu do materiálu"], correctIndex: 3 },
+    { text: "Zápis HRC min. 63 čteme", img: null, options: ["Hodnota tvrdosti 63", "Hodnota 63 jednotek na stupnici C dle Rockwella", "Hodnota tvrdosti je minimálně 63 jednotek dle Rockwella na stupnici C", "Hodnota tvrdosti 63 HR"], correctIndex: 2 },
+    { text: "Výroba šedé litiny probíhá nejvíce v", img: null, options: ["V obloukové peci", "V kyslíkové peci", "Šachtové peci - kuplovně", "V indukční peci"], correctIndex: 2 },
+    { text: "Litina má obsah uhlíku", img: null, options: ["Nad 2,11%", "Nad 4,3%", "Kolem 0,657", "Do 2,11%"], correctIndex: 0 },
+    { text: "V obloukové elektrické peci je dosahována teplota", img: null, options: ["Foukáním kyslíku do taveniny", "Vířivými proudy", "Elektrickým obloukem", "Indukcí"], correctIndex: 2 },
+    { text: "Očkování litiny magnesiem se provádí za účelem:", img: null, options: ["Aby byla litina těžší a získala odolnost vůči chvění", "Aby se uhlík vlivem reakce stočil do globulí a vytvořil globulární grafit", "Aby byla litina levnější", "Aby litina získala ještě větší tvrdost"], correctIndex: 1 },
+    { text: "Z litiny se vyrábí např", img: null, options: ["Kryty, dveře pro skříně s nářadím", "Skříně pro obráběcí stroje, stojany", "Navijáky, kufry, světlomety", "Dráty a kabely"], correctIndex: 1 },
+    { text: "Ocel 19 824 je", img: null, options: ["Ocel uhlíková", "Ocel rychlořezná", "Ocel nízkolegovaná", "Ocel na odlitky"], correctIndex: 1 },
+    { text: "Ocel rychlořezná je určena pro", img: null, options: ["Ruční nástroje a nářadí jako třeba nůžky na plech, razidla na mince", "Zednické nářadí a vrtáky na dřevo", "Obzvláště vysoce namáhaná kovátka pro rotační kování", "Kladiva, kleště, šroubováky"], correctIndex: 2 },
+    { text: "Ocel 11 373 je ocel", img: null, options: ["Konstrukční ocel, tavná svařitelnost obtížná", "Konstrukční ocel, tavná svařitelnost zaručena", "Konstrukční ocel nevhodná pro nosné svary", "Nerezová, vhodná pro potravinářské účely"], correctIndex: 1 },
+    { text: "Nerezová ocel 42 2905.9 se používá pro:", img: null, options: ["Řezné materiály odolné proti popouštění", "Součásti vyráběné na rychloběžných automatech", "Tlukadla a vysoké duté nýty", "Oběžná kola a lopatky vodních turbín"], correctIndex: 3 },
+    { text: "Mechanické vlastnosti technických materiálů popisují chování při", img: null, options: ["Zatěžování statickými a dynamickými silami", "Při elektrické vodivosti", "Zátěži v chemickém prostředí", "Magnetické zátěži"], correctIndex: 0 },
+    { text: "Technologické vlastnosti popisují chování materiálů při", img: null, options: ["Technologických operacích jako např. slévatelnost, obrobitelnost", "Zkouškách tvrdosti", "Zatížení na tah a tlak", "Zatížení na ohyb a krut"], correctIndex: 0 },
+    { text: "Zařízení pro zkoušku tahem se jmenuje:", img: null, options: ["Charpyho kladivo", "Trhací stroj", "Poldi kladívko", "Vstřikovací a řídící jednotka"], correctIndex: 1 },
+    { text: "Zápis 25 HB čteme", img: null, options: ["25 jednotek", "25 jednotek tvrdosti dle Brinella", "25 jednotek tvrdosti dle Rockwella na stupnici B", "25 jednotek tvrdosti dle Vickerse"], correctIndex: 1 },
+    { text: "Hodnota Re u zkoušky tahem", img: null, options: ["Odpovídá mezi kluzu", "Odpovídá hodnotě vratných deformací", "Odpovídá mezi pevnosti", "Odpovídá destrukci materiálu"], correctIndex: 0 },
+    { text: "Hodnota Rm u zkoušky tahem", img: null, options: ["Odpovídá hodnotě, kdy ve zkušebním vzorku vznikne první trhlinka", "Hodnotě mezi kluzu", "Hodnotě napětí vratných deformací", "Hodnotě meze úměrnosti"], correctIndex: 0 },
+    { text: "Oceli třídy 10 jsou určeny zejména pro", img: null, options: ["Hlubokotažné plechy", "Konstrukční součásti méně důležité bez nosných svarů", "Konstrukční oceli, tavná svařitelnost zaručena", "Tyče tažené zastudena"], correctIndex: 1 },
+    { text: "Nízkouhlíková ocel 12 020.1 je určena:", img: null, options: ["Pro fosfátování", "Pro nitridování a povrchovému kalení", "Pro cementování", "Pro svařované konstrukce"], correctIndex: 2 },
+    { text: "Austenitizace oceli", img: null, options: ["je proces, při kterém se obrobek zahřeje na určitou teplotu a vytvoří se austenit, který je stabilní při vysokých teplotách", "je proces, který provádíme za účelem změknutí oceli, aby šla lépe obrábět", "je proces, který zlevňuje všechny druhy ocelí", "je proces, který provádíme za účelem změknutí oceli, aby šla lépe obrábět"], correctIndex: 0 },
+    { text: "Ocel kalíme", img: null, options: ["Aby se zrekrystalizovala zrna po předchozích operacích", "Aby ocel byla co nejlacinější a dobře prodejná", "Aby byly dosažena vyšší tvrdost materiálu", "Aby se vytvořila co možno nejměkčí struktura oceli"], correctIndex: 2 }
+    ];
+
+    // ============================================================
+    // LOGIKA APLIKACE
+    // ============================================================
+    let activeQuestions = [];
+    let currentQIndex = 0;
+    let score = 0;
+    let wrongAnswers = [];
+
+    window.onload = () => {
+        document.getElementById('count-sps').innerText = questionsSPS.length;
+        document.getElementById('count-stt').innerText = questionsSTT.length;
+    };
+
+    function startTest() {
+        const subject = document.getElementById('subject-select').value;
+        const countMode = document.getElementById('q-count').value;
+
+        let sourcePool = [];
+        if (subject === 'sps') sourcePool = [...questionsSPS];
+        else if (subject === 'stt') sourcePool = [...questionsSTT];
+        else sourcePool = [...questionsSPS, ...questionsSTT];
+
+        if (sourcePool.length === 0) {
+            alert("V seznamu nejsou žádná data!");
+            return;
+        }
+
+        sourcePool.sort(() => Math.random() - 0.5);
+        activeQuestions = (countMode === 'all') ? sourcePool : sourcePool.slice(0, parseInt(countMode));
+
+        currentQIndex = 0;
+        score = 0;
+        wrongAnswers = [];
+        
+        document.getElementById('total-q-num').innerText = activeQuestions.length;
+        showScreen('quiz');
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        const q = activeQuestions[currentQIndex];
+        document.getElementById('current-q-num').innerText = currentQIndex + 1;
+        document.getElementById('q-text').innerText = q.text;
+        document.getElementById('next-btn').style.display = 'none';
+        
+        const imgEl = document.getElementById('q-image');
+        if (q.img && q.img !== "null") { imgEl.src = q.img; imgEl.style.display = 'block'; }
+        else { imgEl.style.display = 'none'; }
+        
+        const container = document.getElementById('options-container');
+        container.innerHTML = '';
+
+        // Detekce "pětky" (index 4)
+        if (q.correctIndex === 4 || isNaN(q.correctIndex)) {
+            const div = document.createElement('div');
+            div.className = 'unfinished-wrapper';
+            div.innerHTML = '<p class="unfinished-text">⚠️ Nedodělaná otázka</p><p style="color:#856404; margin-top:5px;">V Excelu chybí správná odpověď. Klikni pro přeskočení.</p>';
+            div.onclick = () => { 
+                div.style.opacity = '0.5'; 
+                document.getElementById('next-btn').style.display = 'inline-block'; 
+            };
+            container.appendChild(div);
+            return;
+        }
+
+        q.options.forEach((optText, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = optText;
+            btn.onclick = () => checkAnswer(index === q.correctIndex, btn, optText, q);
+            container.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(isCorrect, btnElement, selectedText, questionObj) {
+        document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+        const correctText = questionObj.options[questionObj.correctIndex];
+
+        if (isCorrect) {
+            btnElement.classList.add('correct');
+            score++;
+        } else {
+            btnElement.classList.add('wrong');
+            document.querySelectorAll('.option-btn').forEach(b => { 
+                if(b.innerText === correctText) b.classList.add('correct'); 
+            });
+            // Ukládání chyby včetně obrázku
+            wrongAnswers.push({ 
+                question: questionObj.text, 
+                img: questionObj.img, 
+                userAnswer: selectedText, 
+                correctAnswer: correctText 
+            });
+        }
+        document.getElementById('next-btn').style.display = 'inline-block';
+        document.getElementById('score-live').innerText = "Body: " + score;
+    }
+
+    function nextQuestion() {
+        currentQIndex++;
+        if (currentQIndex < activeQuestions.length) loadQuestion();
+        else finishQuiz();
+    }
+
+    function finishQuiz() {
+        showScreen('result');
+        
+        // OPRAVENÁ LOGIKA POČÍTÁNÍ
+        let totalPlayed;
+        if (currentQIndex >= activeQuestions.length) {
+            totalPlayed = activeQuestions.length; // Test dohrán do konce
+        } else {
+            // Test ukončen tlačítkem Dokončit
+            const isCurrentAnswered = document.getElementById('next-btn').style.display !== 'none';
+            totalPlayed = currentQIndex + (isCurrentAnswered ? 1 : 0);
+        }
+        if (totalPlayed === 0) totalPlayed = 1;
+
+        const percentage = Math.round((score / totalPlayed) * 100);
+        document.getElementById('final-score').innerText = percentage + "%";
+        document.getElementById('score-text').innerText = `Správně ${score} z ${totalPlayed}`;
+        
+        const errorContainer = document.getElementById('wrong-answers-container');
+        errorContainer.innerHTML = wrongAnswers.length > 0 ? '<h3>Tvé chyby:</h3>' : '';
+        
+        wrongAnswers.forEach(err => {
+            const div = document.createElement('div');
+            div.className = 'review-item';
+            let imgHtml = (err.img && err.img !== "null") ? `<img src="${err.img}" class="review-img" style="display:block">` : '';
+            div.innerHTML = `
+                <span class="review-q">${err.question}</span>
+                ${imgHtml}
+                <div>
+                    Tvoje: <span class="review-bad">${err.userAnswer}</span><br>
+                    Správně: <span class="review-good">${err.correctAnswer}</span>
+                </div>`;
+            errorContainer.appendChild(div);
+        });
+    }
+
+    function showScreen(name) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(name + '-screen').classList.add('active');
+    }
+</script>
+</body>
+</html>

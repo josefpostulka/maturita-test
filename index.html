@@ -34,7 +34,7 @@
         /* Menu */
         .menu-group { background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; text-align: left; border: 1px solid #eee; }
         label { font-weight: bold; color: #495057; display: block; margin-bottom: 8px; }
-        select { padding: 12px; border-radius: 6px; border: 1px solid #ccc; width: 100%; font-size: 1rem; margin-bottom: 10px; }
+        select { padding: 12px; border-radius: 6px; border: 1px solid #ccc; width: 100%; font-size: 1rem; margin-bottom: 15px; }
         
         /* Vysledky */
         .review-item { background: #fff8f8; border-left: 5px solid #dc3545; padding: 15px; margin-bottom: 20px; border-radius: 4px; text-align: left; }
@@ -52,26 +52,30 @@
 
 <div class="container">
     <div id="start-screen" class="screen active">
-        <h1>Testy</h1>
+        <h1>Maturtní testy</h1>
         <div class="menu-group">
             <label for="subject-select">1. Vyber předmět:</label>
-            <select id="subject-select">
-                <option value="sps">SPS</option>
-                <option value="stt">STT</option>
-                <option value="both">SPS+STT</option>
+            <select id="subject-select" onchange="updateTopicDropdown()">
+                <option value="sps">SPS (Stavba a provoz strojů)</option>
+                <option value="stt">STT (Strojírenská technologie)</option>
+                <option value="both">Kombinovaný test (SPS + STT)</option>
             </select>
 
-            <label for="q-count">2. Počet otázek:</label>
+            <label for="topic-select">2. Vzdělávací okruh:</label>
+            <select id="topic-select">
+                </select>
+
+            <label for="q-count">3. Počet otázek do testu:</label>
             <select id="q-count">
                 <option value="10">10 otázek</option>
-                <option value="20">20 otázek</option>
+                <option value="20" selected>20 otázek</option>
                 <option value="50">50 otázek</option>
-                <option value="all">Všechny dostupné</option>
+                <option value="all">Všechny dostupné v okruhu</option>
             </select>
         </div>
         <button class="primary-btn" style="width:100%" onclick="startTest()">SPUSTIT TEST</button>
         <div style="margin-top: 20px; font-size: 0.8rem; color: #adb5bd;">
-            Nahráno: SPS (<span id="count-sps">0</span>) | STT (<span id="count-stt">0</span>)
+            Nahráno v databázi: SPS (<span id="count-sps">0</span>) | STT (<span id="count-stt">0</span>)
         </div>
     </div>
 
@@ -99,7 +103,7 @@
         <h1>Výsledky testu</h1>
         <div class="score-display" id="final-score">0%</div>
         <p id="score-text" style="font-size: 1.2rem;">Správně 0 z 0</p>
-        <button class="primary-btn" onclick="location.reload()">Zkusit znovu</button>
+        <button class="primary-btn" onclick="location.reload()">Zpět do menu</button>
         <div id="wrong-answers-container" style="margin-top: 30px;"></div>
     </div>
 </div>
@@ -465,7 +469,7 @@
     { text: "Které tvrzení o \"přetlakové parní turbíně\" NENÍ pravdivé?", img: null, options: ["Před lopatkou rotoru je menší tlak než za ní", "Součástí turbiny je tzv. Curtisûv stupeň", "Je pro ni nejvhodnější vstup páry do turbíny po celém obvodu", "Rotorem je buben (dutá hřidel) s lopatkami"], correctIndex: 0 },
     { text: "K jaké přeměně energie dochází v tryskách parních turbin?", img: null, options: ["Kinetická energie se mění v mechanickou", "Tlaková energie se mění v kinetickou", "Kinetická energie se mění v tlakovou", "Mechanická energie se měni kinetickou"], correctIndex: 1 },
     { text: "Co se děje v rychlostí páry v prostoru mezi lopatkami rotoru rovnotlaké parní turbiny?", img: null, options: ["Klesá", "Nelze jednoznačně určit", "Stoupá", "Je konstantni"], correctIndex: 0 },
-    { text: "Co se děje v rychlostí páry v prostoru mezi lopatkami statoru přetlakové parní turbiny?", img: null, options: ["Klesá", "Nelze jednoznačně určit", "Stoupá", "Je konstantni"], correctIndex: 1 },
+    { text: "Co se děje v rychlostí páry v prostoru mezi lopatkami statoru přetlakové parní turbiny?", img: null, options: ["Klesá", "Nelze jednoznačně určit", "Stoupá", "Je konstantni"], correctIndex: 2 },
     { text: "Jak se nazývá druh turbíny, u které spaliny vzniklé hořením proudi přímo na lopatky rotoru?", img: null, options: ["Výměníková turbína", "Spalovaci turbína", "Plynová turbína", "Expanzní turbína"], correctIndex: 1 },
     { text: "Na obrázku je průběh tlaku a rychlosti páry v rovnotlaké parní turbíně. Která fáze (fialové označené svorkami) odpovídá průběhu mezi jejími statorovými lopatkami?", img: "SOV_358.png", options: ["A", "B", "C", "D"], correctIndex: 3 },
     { text: "Na obrázku je průběh tlaku a rychlosti páry v přetlakové parní turbíně. Která fáze (fialové označené svorkami) odpovídá průběhu mezi jejími rotorovými lopatkami?", img: "SOV_359.png", options: ["A", "B", "C", "D"], correctIndex: 2 },
@@ -509,8 +513,8 @@
     { text: "Jak by se dal nejlépe nazvat jaderný reaktor, jehož schéma je na obrázku?", img: "SO_415.jpg", options: ["Tlakovodní", "Těžkovodní", "Varný", "Lehkovodní"], correctIndex: 2 },
     { text: "Na obrázku je výřez leteckého pohledu na jadernou elektrárnu Dukovany. K čemu dochází ve čtyřech šedých velkých objektech na obrázku?", img: "SO_499.jpg", options: ["K vypouštění nevyužité vodní páry z parogenerátoru", "K odvodu vzniklé páry z jaderném reaktoru", "K zvýšení tahu spalin z plynové turbíny", "K chlazení použité chladící vody z kondenzátoru"], correctIndex: 3 },
     { text: "Na obrázku je schematicky zobrazeno štěpení jádra atomu uranu. Jak se nazývá prvek na schématu (nakreslený modrou barvou a označený červenou šipkou)?", img: "SO_500.png", options: ["Kontejnment", "Moderátor", "Odštěpek", "Absorbátor"], correctIndex: 1 }
-           ];
 
+    ];
     const questionsSTT = [
     { text: "Nástrojové úhly platí α, β, γ, δ jsou úhly:", img: null, options: ["a čela, ẞ břitu, y hřbetu, řezu", "a hřbetu, ẞ břitu, čela, řezu", "a břitu, ẞ hřbetu, y čela, řezu", "a čela, ẞ břitu, y řezu, δ hřbetu"], correctIndex: 1 },
     { text: "Nástrojové úhly platí , x, x jsou úhly:", img: null, options: ["řezu, x nastavení hlavního ostří, x nastavení vedlejšího ostří", "špičky nástroje, X nastavení vedlejšího ostří, x nastavení hlavního ostří", "špičky nástroje, X nastavení hlavního ostří, x nastavení vedlejšího ostří", "čela, x'nastavení hlavního ostří, x nastavení vedlejšího ostří"], correctIndex: 2 },
@@ -853,7 +857,31 @@
     { text: "Mezi mechanické vlastnosti materiálů nepatří", img: null, options: ["pevnost v tahu", "tvrdost", "tvárnost", "hodnota spořeenované nárazové práce"], correctIndex: 3 },
     { text: "U materiálů, které mají nevýraznou mez kluzu Re (MPa) se zavádí pojem, který ji nahrazuje, vyber správnou odpověď", img: null, options: ["smluvní mez kluzu Rm", "předpokládaná mez kluzu Rm", "dohodnutá mez kluzu Rp0,2", "smluvní mez kluzu Rp0,2"], correctIndex: 3 }
 
-];
+    ];
+
+    // ============================================================
+    // DEFINICE OKRUHŮ
+    // ============================================================
+    
+    const topicsSPS = [
+        { label: "Všechny otázky (kompletní test SPS)", ranges: "" },
+        { label: "Rozebíratelné spoje", ranges: "1-20, 22-26, 30-33, 35-50" },
+        { label: "Nerozebíratelné spoje", ranges: "21, 27-29, 34, 66-85" },
+        { label: "Hřídele a ložiska", ranges: "51-65, 116-131" },
+        { label: "Spojky a brzdy", ranges: "148-163" },
+        { label: "Převody točivého pohybu", ranges: "101-115, 132-147" },
+        { label: "Potrubí a hydrostat. mechanismy", ranges: "86-100, 164-178" },
+        { label: "Dopravníky", ranges: "179-208" },
+        { label: "Výtahy a jeřáby", ranges: "209-246" },
+        { label: "Čerpadla a kompresory", ranges: "247-280, 315-329" },
+        { label: "Spalovací motory", ranges: "281-314" },
+        { label: "Lopatkové turbíny a tepelné elektrárny", ranges: "330-399" }
+    ];
+
+    const topicsSTT = [
+        { label: "Všechny otázky (kompletní test STT)", ranges: "" }
+        // Sem se v budoucnu mohou přidat hlavní okruhy pro STT
+    ];
 
     // ============================================================
     // LOGIKA APLIKACE
@@ -863,7 +891,53 @@
     let score = 0;
     let wrongAnswers = [];
 
-    // --- NOVÁ LOGIKA MÍCHÁNÍ (Fisher-Yates) ---
+    // Inicializace po načtení okna
+    window.onload = () => {
+        document.getElementById('count-sps').innerText = questionsSPS.length;
+        document.getElementById('count-stt').innerText = questionsSTT.length;
+        updateTopicDropdown(); // Načte správné okruhy do roletky
+    };
+
+    // Funkce, která mění nabídku okruhů podle zvoleného předmětu
+    function updateTopicDropdown() {
+        const subject = document.getElementById('subject-select').value;
+        const topicSelect = document.getElementById('topic-select');
+        topicSelect.innerHTML = '';
+        
+        let topics = [];
+        if (subject === 'sps') {
+            topics = topicsSPS;
+        } else if (subject === 'stt') {
+            topics = topicsSTT;
+        } else {
+            topics = [{ label: "Všechny otázky z obou předmětů", ranges: "" }];
+        }
+
+        topics.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.ranges;
+            opt.innerText = t.label;
+            topicSelect.appendChild(opt);
+        });
+    }
+
+    // Funkce, která převede tvůj text "1-5, 8" na pole indexů [1,2,3,4,5,8]
+    function parseRanges(rangeStr) {
+        if (!rangeStr || rangeStr.trim() === "") return null;
+        let ids = [];
+        let parts = rangeStr.split(',');
+        parts.forEach(p => {
+            if (p.includes('-')) {
+                let [start, end] = p.split('-').map(Number);
+                for (let i = start; i <= end; i++) ids.push(i);
+            } else {
+                ids.push(Number(p.trim()));
+            }
+        });
+        return ids;
+    }
+
+    // Profesionální náhodné zamíchání (Fisher-Yates)
     function shuffleArray(array) {
         for (let i = array.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -872,29 +946,44 @@
         return array;
     }
 
-    window.onload = () => {
-        document.getElementById('count-sps').innerText = questionsSPS.length;
-        document.getElementById('count-stt').innerText = questionsSTT.length;
-    };
-
     function startTest() {
         const subject = document.getElementById('subject-select').value;
+        const topicRanges = document.getElementById('topic-select').value;
         const countMode = document.getElementById('q-count').value;
 
-        let sourcePool = [];
-        if (subject === 'sps') sourcePool = [...questionsSPS];
-        else if (subject === 'stt') sourcePool = [...questionsSTT];
-        else sourcePool = [...questionsSPS, ...questionsSTT];
+        let rawPool = [];
+        if (subject === 'sps') rawPool = [...questionsSPS];
+        else if (subject === 'stt') rawPool = [...questionsSTT];
+        else rawPool = [...questionsSPS, ...questionsSTT];
 
-        if (sourcePool.length === 0) {
-            alert("V seznamu nejsou žádná data!");
+        if (rawPool.length === 0) {
+            alert("V seznamu nejsou zatím vložena žádná data!");
             return;
         }
 
-        // Profesionální náhodné zamíchání otázek
+        let sourcePool = [];
+
+        // Filtrování otázek podle vybraného okruhu
+        if (topicRanges !== "") {
+            const allowedIds = parseRanges(topicRanges);
+            // Vybíráme otázky podle jejich reálného čísla v poli (index + 1)
+            sourcePool = rawPool.filter((q, idx) => allowedIds.includes(idx + 1));
+        } else {
+            sourcePool = [...rawPool];
+        }
+
+        if (sourcePool.length === 0) {
+            alert("Pro tento okruh nebyly nalezeny žádné otázky. Zkontroluj si data.");
+            return;
+        }
+
+        // Zamíchání vyfiltrovaných otázek
         shuffleArray(sourcePool);
         
-        activeQuestions = (countMode === 'all') ? sourcePool : sourcePool.slice(0, parseInt(countMode));
+        // Oříznutí podle počtu, který uživatel chtěl
+        activeQuestions = (countMode === 'all' || sourcePool.length < parseInt(countMode)) 
+                            ? sourcePool 
+                            : sourcePool.slice(0, parseInt(countMode));
 
         currentQIndex = 0;
         score = 0;
@@ -906,35 +995,46 @@
     }
 
     function loadQuestion() {
+        if (currentQIndex >= activeQuestions.length) {
+            finishQuiz();
+            return;
+        }
+
         const q = activeQuestions[currentQIndex];
         document.getElementById('current-q-num').innerText = currentQIndex + 1;
         document.getElementById('q-text').innerText = q.text;
         document.getElementById('next-btn').style.display = 'none';
         
         const imgEl = document.getElementById('q-image');
-        if (q.img && q.img !== "null") { imgEl.src = q.img; imgEl.style.display = 'block'; }
-        else { imgEl.style.display = 'none'; }
+        if (q.img && q.img !== "null") { 
+            imgEl.src = q.img; 
+            imgEl.style.display = 'block'; 
+        } else { 
+            imgEl.style.display = 'none'; 
+        }
         
         const container = document.getElementById('options-container');
         container.innerHTML = '';
 
-        // Detekce "pětky" (index 4)
-        if (q.correctIndex === 4 || isNaN(q.correctIndex)) {
+        // Detekce nedodělané otázky
+        if (q.correctIndex === 4 || isNaN(q.correctIndex) || (q.options[4] && q.options[4].trim() !== "")) {
             const div = document.createElement('div');
             div.className = 'unfinished-wrapper';
-            div.innerHTML = '<p class="unfinished-text">⚠️ Nedodělaná otázka</p><p style="color:#856404; margin-top:5px;">V Excelu chybí správná odpověď. Klikni pro přeskočení.</p>';
+            div.innerHTML = '<p class="unfinished-text">⚠️ Nedodělaná otázka</p><p style="color:#856404; margin-top:5px;">V datech chybí správná odpověď. Klikni pro přeskočení.</p>';
             div.onclick = () => { 
-                div.style.opacity = '0.5'; 
+                div.style.opacity = '0.5';
+                score++; // Dá bod zdarma, aby nekazilo skóre
+                document.getElementById('score-live').innerText = "Body: " + score;
                 document.getElementById('next-btn').style.display = 'inline-block'; 
             };
             container.appendChild(div);
             return;
         }
 
-        // Uložení textu správné odpovědi před mícháním
+        // Uložení textu správné odpovědi před zamícháním
         const correctAnswerText = q.options[q.correctIndex];
 
-        // Vytvoření pole objektů pro míchání možností (vynechá prázdné)
+        // Příprava objektů pro míchání možností (vynechá prázdné)
         let answerObjects = q.options
             .filter(opt => opt && opt.trim() !== "")
             .map(opt => ({
@@ -942,22 +1042,20 @@
                 isCorrect: (opt === correctAnswerText)
             }));
 
-        // Profesionální zamíchání možností odpovědí
+        // Zamíchání možností odpovědí
         shuffleArray(answerObjects);
 
-        // Vykreslení tlačítek se zamíchanými možnostmi
         answerObjects.forEach((answer) => {
             const btn = document.createElement('button');
             btn.className = 'option-btn';
             btn.innerText = answer.text;
-            btn.onclick = () => checkAnswer(answer.isCorrect, btn, answer.text, q);
+            btn.onclick = () => checkAnswer(answer.isCorrect, btn, answer.text, q, correctAnswerText);
             container.appendChild(btn);
         });
     }
 
-    function checkAnswer(isCorrect, btnElement, selectedText, questionObj) {
+    function checkAnswer(isCorrect, btnElement, selectedText, questionObj, correctText) {
         document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
-        const correctText = questionObj.options[questionObj.correctIndex];
 
         if (isCorrect) {
             btnElement.classList.add('correct');
@@ -965,9 +1063,8 @@
         } else {
             btnElement.classList.add('wrong');
             document.querySelectorAll('.option-btn').forEach(b => { 
-                if(b.innerText === correctText) b.classList.add('correct'); 
+                if (b.innerText === correctText) b.classList.add('correct'); 
             });
-            // Ukládání chyby včetně obrázku
             wrongAnswers.push({ 
                 question: questionObj.text, 
                 img: questionObj.img, 
@@ -988,12 +1085,10 @@
     function finishQuiz() {
         showScreen('result');
         
-        // OPRAVENÁ LOGIKA POČÍTÁNÍ
         let totalPlayed;
         if (currentQIndex >= activeQuestions.length) {
-            totalPlayed = activeQuestions.length; // Test dohrán do konce
+            totalPlayed = activeQuestions.length; 
         } else {
-            // Test ukončen tlačítkem Dokončit
             const isCurrentAnswered = document.getElementById('next-btn').style.display !== 'none';
             totalPlayed = currentQIndex + (isCurrentAnswered ? 1 : 0);
         }
@@ -1004,7 +1099,7 @@
         document.getElementById('score-text').innerText = `Správně ${score} z ${totalPlayed}`;
         
         const errorContainer = document.getElementById('wrong-answers-container');
-        errorContainer.innerHTML = wrongAnswers.length > 0 ? '<h3>Tvé chyby:</h3>' : '';
+        errorContainer.innerHTML = wrongAnswers.length > 0 ? '<h3>Tvé chyby k doučení:</h3>' : '';
         
         wrongAnswers.forEach(err => {
             const div = document.createElement('div');
@@ -1014,8 +1109,8 @@
                 <span class="review-q">${err.question}</span>
                 ${imgHtml}
                 <div>
-                    Tvoje: <span class="review-bad">${err.userAnswer}</span><br>
-                    Správně: <span class="review-good">${err.correctAnswer}</span>
+                    Tvoje odpověď: <span class="review-bad">${err.userAnswer}</span><br>
+                    Správná odpověď: <span class="review-good">${err.correctAnswer}</span>
                 </div>`;
             errorContainer.appendChild(div);
         });
